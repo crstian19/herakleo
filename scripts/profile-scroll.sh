@@ -15,6 +15,8 @@
 #   FRESH_CACHE=1    start with an empty WebKit cache (logos download and decode again)
 # Needs: hyprctl (Hyprland), ydotool + ydotoold on $YDOTOOL_SOCKET, sysprof for --sysprof.
 set -euo pipefail
+# Captures and reports describe this machine: keep them readable by you only.
+umask 077
 
 app=${1:?tauri or wails}
 variant=${2:-baseline}

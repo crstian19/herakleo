@@ -2,9 +2,12 @@ package logocolor
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"image/color"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -46,5 +49,37 @@ func TestPickNothingUsable(t *testing.T) {
 	_ = png.Encode(&buf, img)
 	if got, _ := FromBytes(buf.Bytes()); got != "" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func encodePNG(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestPixelBudget(t *testing.T) {
+	if _, err := FromBytes(encodePNG(t, 1024, 1024)); err != nil {
+		t.Fatalf("1024x1024: %v", err)
+	}
+	// Same pixel count as 4096x512, which the old per-side cap allowed.
+	if _, err := FromBytes(encodePNG(t, 2048, 1024)); err == nil {
+		t.Fatal("2048x1024 should exceed the pixel budget")
+	}
+}
+
+// A literal private host is a LAN panel's own logo and stays allowed
+// (httptest listens on 127.0.0.1).
+func TestFromURLLiteralPrivateHost(t *testing.T) {
+	logo := encodePNG(t, 8, 8)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(logo)
+	}))
+	defer srv.Close()
+	if _, err := FromURL(context.Background(), srv.URL+"/x.png"); err != nil {
+		t.Fatal(err)
 	}
 }

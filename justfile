@@ -41,19 +41,17 @@ build-wails:
     cd frontend && bun install && bun run build:wails
     cd wails && {{ wails_build }} -o build/bin/herakleo-wails .
 
-build: build-tauri build-wails
+build: build-wails
 
 test:
     cd frontend && bun run check
     cd frontend && bun run build:wails
     cd wails && go test ./...
-    cd tauri/src-tauri && cargo test
 
 lint:
     cd frontend && bun run check
     cd frontend && bun run build:wails
     cd wails && go vet ./...
-    cd tauri/src-tauri && cargo clippy --all-targets -- -D warnings
 
 # Clean release builds of both, then binary size and build time side by side
 compare:
@@ -85,20 +83,18 @@ mem app="tauri" secs="5":
 # Tars the working tree (uncommitted changes included) and runs makepkg in each
 # PKGBUILD dir. No -s: install the makedepends yourself (cargo, go, bun,
 # nodejs, pkgconf, imagemagick).
-# Arch packages (packaging/arch): both apps, or one with `just package-arch wails`
-package-arch flavours="tauri wails":
+# Arch package (packaging/arch). The deprecated Tauri one: `just package-arch tauri`
+package-arch flavours="wails":
     #!/usr/bin/env bash
     set -euo pipefail
-    ver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo-tauri/PKGBUILD)
+    ver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo-wails/PKGBUILD)
     tarball="packaging/arch/herakleo-$ver.tar.gz"
-    tar -czf "$tarball" \
-      --exclude-vcs \
-      --exclude=node_modules --exclude=target --exclude=dist --exclude=dist-mock \
-      --exclude=./wails/frontend --exclude=./wails/build/bin --exclude=./tauri/src-tauri/gen \
-      --exclude='./packaging/arch/*/src' --exclude='./packaging/arch/*/pkg' \
-      --exclude='*.pkg.tar.zst' --exclude='herakleo-*.tar.gz' --exclude=.env \
-      --transform "s,^\.,herakleo-$ver," \
-      .
+    # Only what git would publish (tracked + untracked, minus .gitignore), so
+    # local-only files like profiles/ (sysprof captures hold the environment)
+    # can never end up in a source tarball.
+    git ls-files -z --cached --others --exclude-standard \
+      | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
+      | tar -czf "$tarball" --null -T - --transform "s,^,herakleo-$ver/,"
     for flavour in {{ flavours }}; do
       cp "$tarball" "packaging/arch/herakleo-$flavour/"
       (cd "packaging/arch/herakleo-$flavour" && makepkg -f --noconfirm)

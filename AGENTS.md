@@ -1,7 +1,13 @@
 # Herakleo — Agent Guide
 
-Desktop IPTV player (M3U + Xtream Codes, playback in external mpv), built **twice on purpose**
-to compare Tauri and Wails. Named after Herakleopolis, the ancient rival of Thebes.
+Desktop IPTV player (M3U + Xtream Codes, playback in external mpv). It was built twice on purpose
+to compare Tauri and Wails; **Wails won and is the only maintained app.** Named after Herakleopolis,
+the ancient rival of Thebes.
+
+> **The Tauri build (`tauri/`, `frontend/src/lib/backend/tauri.ts`) is deprecated and frozen** as of
+> 2026-10-27. Don't port new features, fixes or tests to it, don't audit it, and don't let it block
+> a change. The parity rules below are kept for history; from now on only `wails/` counts. It stays
+> in the repo as the reference for the comparison (docs/PERFORMANCE.md) until it is removed.
 
 ## Layout
 
@@ -13,7 +19,7 @@ to compare Tauri and Wails. Named after Herakleopolis, the ancient rival of Theb
 | `tauri/src-tauri/` | Rust backend (Tauri v2): `playlist.rs`, `library.rs`, `player.rs`, commands in `lib.rs` |
 | `wails/` | Go backend (Wails **v3**, GTK 4 + webkitgtk-6.0): `internal/{playlist,library,player}`, service methods in `app.go` |
 
-## Parity rules (the point of the project)
+## Parity rules (historical: Tauri is frozen, see above)
 
 - Every change to the backend goes into **both** implementations, in the same commit.
 - The on-disk library (`~/.config/herakleo/library.json` + `channels/<sourceId>.json`) is shared:
@@ -107,5 +113,16 @@ just bench        # end-to-end benchmark of both apps on a copy of the library (
   Single-key shortcuts never fire while typing (`isTyping`). Everything must stay reachable with
   arrows + Enter + Esc/Backspace (TV remotes). A new shortcut goes in both `onkey` and
   `shortcutGroups`, with its label in the locales.
+- **Security rules (audit 2026-10-27):**
+  - `runtimeguard.go` lets JS reach only `Call` (`main.App.*` by name) and `CancelCall` on
+    `/wails/runtime`; Browser, Clipboard, Dialog, Window… get 403. A new runtime feature from JS
+    needs an entry there. `frontend/index.html` carries the CSP (dev adds the HMR socket only).
+  - Stream URLs never go in a player's argv (they hold Xtream passwords, visible in `ps`): the
+    player gets a 0600 one-entry `.m3u` in `$XDG_RUNTIME_DIR/herakleo/`, removed on exit.
+  - Changing an Xtream server needs the password again (`credentials_required`); `m3u_file`
+    paths must come from `PickPlaylistFile` (`file_not_picked`).
+  - Network: Xtream JSON is decoded element by element (cap `MaxEntries`, 64 MiB); the HTTP
+    clients refuse private/loopback addresses unless the source itself is local (redirects and
+    DNS rebinding included); logos are capped at 1 Mpx with 4 decodes at a time.
 - Player options are a closed set (`player.Options` / `player::Options`) validated in both backends;
   add a new one as a typed field plus per-player args, never as a free-form string.
