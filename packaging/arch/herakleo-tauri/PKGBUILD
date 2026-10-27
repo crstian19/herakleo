@@ -1,0 +1,84 @@
+# Maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+#
+# Local package: the source is a tarball of the working tree made by
+# `just package-arch`. Coexists with herakleo-wails:
+# no file is shared between the two packages.
+
+pkgname=herakleo-tauri
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Desktop IPTV player (M3U + Xtream Codes) - Tauri build'
+arch=('x86_64')
+url='https://github.com/crstian19/herakleo'
+license=('GPL-3.0-or-later')
+depends=(
+  'webkit2gtk-4.1'
+  'gtk3'
+  'libsoup3'
+  'glib2'
+  'cairo'
+  'gdk-pixbuf2'
+  'pango'
+  'dbus'
+  'gcc-libs'
+  'glibc'
+)
+makedepends=(
+  'cargo'
+  'bun'
+  'nodejs'
+  'pkgconf'
+  'imagemagick'
+)
+optdepends=(
+  'mpv: default video player'
+  'vlc: alternative video player'
+  'celluloid: alternative video player'
+  'haruna: alternative video player'
+  'smplayer: alternative video player'
+)
+# makepkg's LTO flags break the Rust/WebKit link
+options=('!lto' '!debug')
+source=("herakleo-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "herakleo-$pkgver"
+  export CARGO_HOME="$srcdir/cargo-home"
+  (cd tauri/src-tauri && cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')")
+  (cd tauri && bun install --frozen-lockfile)
+  (cd frontend && bun install --frozen-lockfile)
+}
+
+build() {
+  cd "herakleo-$pkgver/tauri"
+  export CARGO_HOME="$srcdir/cargo-home"
+  # beforeBuildCommand in tauri.conf.json builds frontend/dist first
+  bunx tauri build --no-bundle
+}
+
+package() {
+  cd "herakleo-$pkgver"
+  install -Dm755 tauri/src-tauri/target/release/herakleo-tauri "$pkgdir/usr/bin/herakleo-tauri"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/herakleo-tauri/LICENSE"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/herakleo-tauri.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Herakleo (Tauri)
+GenericName=IPTV Player
+Comment=$pkgdesc
+Exec=herakleo-tauri
+Icon=herakleo-tauri
+Terminal=false
+Categories=AudioVideo;Video;Player;TV;
+StartupWMClass=herakleo-tauri
+DESKTOP
+
+  local size
+  for size in 512 256 128; do
+    install -dm755 "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps"
+    magick assets/herakleo-tauri.png -filter point -resize "${size}x${size}" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/herakleo-tauri.png"
+  done
+}

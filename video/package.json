@@ -1,0 +1,31 @@
+{
+  "name": "herakleo-video",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render HerakleoLaunch out/herakleo-launch.mp4",
+    "still": "remotion still HerakleoLaunch",
+    "voice": "node --env-file-if-exists=.env scripts/gen-voice.mjs",
+    "music:analyze": "node scripts/analyze-music.mjs",
+    "music:loop": "node scripts/loop-music.mjs",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/fonts": "4.0.539",
+    "@remotion/lottie": "4.0.539",
+    "@remotion/media": "4.0.539",
+    "lottie-web": "5.13.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539",
+    "simple-icons": "16.36.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}
