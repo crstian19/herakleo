@@ -48,7 +48,7 @@ just setup         # frontend dependencies and git hooks
 just build-wails   # → wails/build/bin/herakleo-wails
 just dev-wails     # live-reloading development build
 just dev-mock      # the UI alone, in a browser, with fake data
-just test          # svelte-check, Go and Rust tests
+just test          # svelte-check and Go tests
 ```
 
 ## How it is built
@@ -58,15 +58,16 @@ backend on [Wails v3](https://v3.wails.io) (GTK 4).
 
 Herakleo was written twice on purpose: the same frontend also runs on a Rust backend with
 [Tauri 2](https://v2.tauri.app), to compare both frameworks on a real app. The Tauri build is
-kept in the repo (`just build-tauri`) and both backends implement the same API, error codes and
-on-disk format, so they can share a library. On Linux, Tauri still uses the GTK 3 WebKit, which
+**deprecated**: it stays in the repo (`just build-tauri`) as the reference for that comparison but
+gets no new features or fixes. Up to the freeze both backends implemented the same API, error
+codes and on-disk format, so they can share a library. On Linux, Tauri still uses the GTK 3 WebKit, which
 caps scrolling at 60 fps; Wails v3 on GTK 4 does not, which is why Wails is the main build.
 Measurements are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ```
 frontend/          Svelte UI, shared by both apps (src/lib/types.ts is the API contract)
 wails/             Go backend (Wails v3): playlist parsing, library, player
-tauri/src-tauri/   Rust backend (Tauri 2), same API
+tauri/src-tauri/   Rust backend (Tauri 2), deprecated and frozen
 packaging/arch/    PKGBUILDs
 scripts/           benchmark and scroll-profiling harnesses
 docs/              performance notes and backlog

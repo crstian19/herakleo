@@ -123,6 +123,12 @@ type Library struct {
 	// Logo accent cache (colors.go), separate lock: filled by slow downloads.
 	colorMu sync.Mutex
 	colors  map[string]string
+
+	// Files the user chose in the native dialog this session (AllowFile). Only
+	// these may become m3u_file sources: otherwise a compromised webview could
+	// name any readable file and get its lines back as channel names.
+	pickMu sync.Mutex
+	picked map[string]bool
 }
 
 // Open loads the library from dir, creating it on first run.
@@ -137,7 +143,7 @@ func Open(dir string) (*Library, error) {
 			return nil, err
 		}
 	}
-	l := &Library{dir: dir, channels: map[string][]channel{}, chanMod: map[string]time.Time{}}
+	l := &Library{dir: dir, channels: map[string][]channel{}, chanMod: map[string]time.Time{}, picked: map[string]bool{}}
 	if err := l.reloadLocked(); err != nil {
 		return nil, err
 	}
@@ -182,6 +188,9 @@ func (l *Library) Add(ctx context.Context, n NewSource) (SourceInfo, error) {
 	}
 	if s.Name == "" {
 		return SourceInfo{}, errors.New("name_required")
+	}
+	if s.Kind == KindM3UFile && !l.wasPicked(s.Path) {
+		return SourceInfo{}, errors.New("file_not_picked")
 	}
 	id, err := newID()
 	if err != nil {
@@ -245,10 +254,22 @@ func (l *Library) Refresh(ctx context.Context, id string) (SourceInfo, error) {
 // loaded re-downloads it first and saves nothing if that fails; a rename alone
 // is instant. New stream URLs mean new channel IDs, so favourites of an
 // Xtream source do not survive a credential change.
+//
+// Keeping stored fields must never send them somewhere new: an Xtream server
+// change needs the password in the same request, and a new file path must
+// come from the native dialog.
 func (l *Library) Update(ctx context.Context, id string, n NewSource) (SourceInfo, error) {
 	next, ok := l.snapshot(id)
 	if !ok {
 		return SourceInfo{}, errors.New("source_not_found")
+	}
+	if next.Kind == KindXtream && n.Password == "" {
+		if server := strings.TrimSpace(n.Server); server != "" && !sameServer(server, next.Server) {
+			return SourceInfo{}, errors.New("credentials_required")
+		}
+	}
+	if n.Path != "" && n.Path != next.Path && !l.wasPicked(n.Path) {
+		return SourceInfo{}, errors.New("file_not_picked")
 	}
 
 	reload := false
@@ -293,6 +314,36 @@ func (l *Library) Update(ctx context.Context, id string, n NewSource) (SourceInf
 		return SourceInfo{}, err
 	}
 	return s.info(), nil
+}
+
+// AllowFile records a path the user chose in the native file dialog, so Add
+// and Update accept it as an m3u_file source.
+func (l *Library) AllowFile(path string) {
+	if path == "" {
+		return
+	}
+	l.pickMu.Lock()
+	defer l.pickMu.Unlock()
+	l.picked[path] = true
+}
+
+func (l *Library) wasPicked(path string) bool {
+	l.pickMu.Lock()
+	defer l.pickMu.Unlock()
+	return l.picked[path]
+}
+
+// sameServer reports whether two Xtream server addresses reach the same
+// scheme and host, ignoring case, spaces and a trailing slash. Anything
+// unparsable only matches itself.
+func sameServer(a, b string) bool {
+	a, b = playlist.Xtream{Server: a}.Location(), playlist.Xtream{Server: b}.Location()
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil || ua.Host == "" || ub.Host == "" {
+		return a == b
+	}
+	return strings.EqualFold(ua.Scheme, ub.Scheme) && strings.EqualFold(ua.Host, ub.Host)
 }
 
 // SetEnabled turns a source on or off without deleting it. Disabled sources

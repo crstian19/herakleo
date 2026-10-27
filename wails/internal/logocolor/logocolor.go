@@ -19,16 +19,28 @@ import (
 	"time"
 
 	_ "golang.org/x/image/webp"
+
+	"github.com/crstian19/herakleo/wails/internal/playlist"
 )
 
 const (
 	maxLogoBytes = 4 << 20
-	// Larger images are decompression bombs, not logos.
-	maxLogoSide = 4096
-	sample      = 64
+	// Larger images are decompression bombs, not logos. A megapixel decodes
+	// to at most 8 MiB (16-bit RGBA) and still fits any real logo.
+	maxLogoPixels = 1 << 20
+	sample        = 64
 )
 
-var client = &http.Client{Timeout: 15 * time.Second}
+// Logo URLs come from the provider, so a public logo may not redirect or
+// resolve into the LAN. A literal private host (http://192.168.1.2/x.png)
+// is still fetched: a LAN panel serves its logos that way, and the webview
+// requests the same URL anyway. Names resolving to LAN addresses
+// (panel.lan) are blocked, since nothing here knows the source is local.
+var clients = playlist.NewClients(15 * time.Second)
+
+// decodeSlots bounds decodes across the process: the UI may run several
+// LogoColors batches at once, each with its own download workers.
+var decodeSlots = make(chan struct{}, 4)
 
 // FromURL downloads a logo and returns its accent as "#rrggbb", or "" when
 // the logo has no usable colour (all transparent, black or white).
@@ -42,7 +54,7 @@ func FromURL(ctx context.Context, rawURL string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "VLC/3.0.21 LibVLC/3.0.21")
-	resp, err := client.Do(req)
+	resp, err := clients.For(ctx, u, false).Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -66,9 +78,11 @@ func FromBytes(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if cfg.Width > maxLogoSide || cfg.Height > maxLogoSide {
+	if int64(cfg.Width)*int64(cfg.Height) > maxLogoPixels {
 		return "", errors.New("logo dimensions too large")
 	}
+	decodeSlots <- struct{}{}
+	defer func() { <-decodeSlots }()
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return "", err

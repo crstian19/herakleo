@@ -30,8 +30,24 @@
     { kind: "xtream", label: "dialog.tabXtream" },
   ];
 
+  // The backend never sends the stored password to a new server (scheme or
+  // host differ), so moving an Xtream list needs it typed again.
+  const sameServer = (a: string, b: string) => {
+    const norm = (v: string) => v.trim().replace(/\/+$/, "");
+    try {
+      const [x, y] = [new URL(norm(a)), new URL(norm(b))];
+      return x.protocol === y.protocol && x.host === y.host;
+    } catch {
+      return norm(a) === norm(b);
+    }
+  };
+  const needsPassword = $derived(
+    initial !== null && kind === "xtream" && server.trim() !== "" && !sameServer(server, initial.location),
+  );
+
   const valid = $derived(
     name.trim() !== "" &&
+      !(needsPassword && password === "") &&
       (initial !== null ||
         (kind === "m3u_url"
           ? url.trim() !== ""
@@ -112,11 +128,15 @@
           <input
             class="field"
             type="password"
-            placeholder={t(initial ? "dialog.passwordKeep" : "dialog.password")}
+            placeholder={t(initial && !needsPassword ? "dialog.passwordKeep" : "dialog.password")}
             autocomplete="off"
+            required={needsPassword}
             bind:value={password}
           />
         </div>
+        {#if needsPassword}
+          <p class="text-xs text-accent">{t("dialog.passwordForServer")}</p>
+        {/if}
         {#if initial}
           <p class="text-xs text-muted">{t("dialog.credentialsWarning")}</p>
         {/if}

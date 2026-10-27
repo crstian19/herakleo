@@ -36,36 +36,30 @@ func (x Xtream) LiveChannels(ctx context.Context) ([]Entry, error) {
 		return nil, err
 	}
 
-	var cats []xtreamCategory
-	if err := x.call(ctx, base, "get_live_categories", &cats); err != nil {
-		return nil, err
-	}
-	groups := make(map[string]string, len(cats))
-	for _, c := range cats {
+	groups := map[string]string{}
+	err = xtreamList(ctx, x, base, "get_live_categories", func(c xtreamCategory) {
 		groups[rawID(c.ID)] = c.Name
-	}
-
-	var streams []xtreamStream
-	if err := x.call(ctx, base, "get_live_streams", &streams); err != nil {
+	})
+	if err != nil {
 		return nil, err
 	}
 
+	// Streams become entries as they are decoded: holding the whole list
+	// first is what let a body of `[{},{},…]` take gigabytes.
 	user, pass := url.PathEscape(x.Username), url.PathEscape(x.Password)
-	entries := make([]Entry, 0, min(len(streams), MaxEntries))
-	for _, s := range streams {
-		if len(entries) == MaxEntries {
-			break
+	var entries []Entry
+	err = xtreamList(ctx, x, base, "get_live_streams", func(s xtreamStream) {
+		if id := rawID(s.StreamID); id != "" {
+			entries = append(entries, Entry{
+				Name:  strings.TrimSpace(s.Name),
+				Group: groups[rawID(s.CategoryID)],
+				Logo:  logo(s.Icon),
+				URL:   base + "/live/" + user + "/" + pass + "/" + url.PathEscape(id) + ".ts",
+			})
 		}
-		id := rawID(s.StreamID)
-		if id == "" {
-			continue
-		}
-		entries = append(entries, Entry{
-			Name:  strings.TrimSpace(s.Name),
-			Group: groups[rawID(s.CategoryID)],
-			Logo:  logo(s.Icon),
-			URL:   base + "/live/" + user + "/" + pass + "/" + url.PathEscape(id) + ".ts",
-		})
+	})
+	if err != nil {
+		return nil, err
 	}
 	return entries, nil
 }
@@ -90,20 +84,53 @@ func (x Xtream) base() (string, error) {
 	return loc, nil
 }
 
-func (x Xtream) call(ctx context.Context, base, action string, out any) error {
+// xtreamList streams the JSON array an API action returns, handing each
+// element to fn.
+func xtreamList[T any](ctx context.Context, x Xtream, base, action string, fn func(T)) error {
 	q := url.Values{"username": {x.Username}, "password": {x.Password}, "action": {action}}
-	body, err := get(ctx, base+"/player_api.php?"+q.Encode())
+	b, err := open(ctx, base+"/player_api.php?"+q.Encode(), maxAPIBytes)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = b.Close() }()
+	return decodeList(b, fn)
+}
+
+// decodeList stops after MaxEntries elements, truncating like ParseM3U does
+// rather than failing the import; the rest of the body is never read.
+func decodeList[T any](b *body, fn func(T)) error {
+	dec := json.NewDecoder(b)
 	// Panels answer bad credentials with an object (or nothing) instead of a list.
-	if !bytes.HasPrefix(bytes.TrimSpace(body), []byte("[")) {
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('[') {
+		if rerr := b.readErr(); rerr != nil {
+			return rerr
+		}
 		return errors.New("xtream_rejected")
 	}
-	if err := json.Unmarshal(body, out); err != nil {
-		return errors.New("xtream_invalid_response")
+	for range MaxEntries {
+		if !dec.More() {
+			break
+		}
+		var item T
+		if err := dec.Decode(&item); err != nil {
+			return invalidResponse(b)
+		}
+		fn(item)
+	}
+	if dec.More() {
+		return nil
+	}
+	if _, err := dec.Token(); err != nil { // the closing ]
+		return invalidResponse(b)
 	}
 	return nil
+}
+
+func invalidResponse(b *body) error {
+	if err := b.readErr(); err != nil {
+		return err
+	}
+	return errors.New("xtream_invalid_response")
 }
 
 func logo(raw string) string {
@@ -148,18 +175,20 @@ func (x Xtream) AccountInfo(ctx context.Context) (Account, error) {
 		return Account{}, err
 	}
 	q := url.Values{"username": {x.Username}, "password": {x.Password}}
-	body, err := get(ctx, base+"/player_api.php?"+q.Encode())
+	// The answer is a small object; a megabyte is plenty.
+	b, err := open(ctx, base+"/player_api.php?"+q.Encode(), 1<<20)
 	if err != nil {
 		return Account{}, err
 	}
+	defer func() { _ = b.Close() }()
 	var resp struct {
 		UserInfo struct {
 			ExpDate json.RawMessage `json:"exp_date"`
 			Status  string          `json:"status"`
 		} `json:"user_info"`
 	}
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return Account{}, errors.New("xtream_invalid_response")
+	if err := json.NewDecoder(b).Decode(&resp); err != nil {
+		return Account{}, invalidResponse(b)
 	}
 	exp, _ := strconv.ParseInt(rawID(resp.UserInfo.ExpDate), 10, 64)
 	return Account{ExpiresAt: max(exp, 0), Status: strings.TrimSpace(resp.UserInfo.Status)}, nil

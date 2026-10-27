@@ -6,11 +6,13 @@ package player
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/crstian19/herakleo/wails/internal/playlist"
 )
@@ -52,19 +54,26 @@ func (o Options) Validate() error {
 
 // known is a fixed allowlist on purpose: letting the UI send an arbitrary
 // command would turn any webview bug into code execution. Mirrors player.rs.
-// Celluloid, Haruna and SMPlayer get only the URL: they have no stable CLI
-// flags for these options, and passing mpv options through them is exactly
-// the kind of string building the allowlist exists to avoid.
+// Celluloid, Haruna and SMPlayer get only the playlist: they have no stable
+// CLI flags for these options, and passing mpv options through them is
+// exactly the kind of string building the allowlist exists to avoid.
+//
+// No player ever gets the stream URL in argv: Xtream URLs carry the password
+// in their path and /proc/<pid>/cmdline is world-readable. They get a 0600
+// playlist file instead (see playlist.go).
 var known = []struct {
 	id, name, bin string
 	options       []string
-	args          func(title, url string, o Options) []string
+	args          func(l launch, o Options) []string
 }{
-	{"mpv", "mpv", "mpv", []string{OptSoftwareDecoding, OptCacheSecs, OptVolume}, func(title, url string, o Options) []string {
+	{"mpv", "mpv", "mpv", []string{OptSoftwareDecoding, OptCacheSecs, OptVolume}, func(l launch, o Options) []string {
 		args := []string{"--force-window=immediate", "--really-quiet",
 			// "$$" stops mpv expanding ${path} in a hostile channel name into
 			// the window title, which would show the password-bearing URL.
-			"--title=Herakleo · " + strings.ReplaceAll(title, "$", "$$")}
+			"--title=" + strings.ReplaceAll(l.title, "$", "$$"),
+			// IPTV never needs yt-dlp, and on a failed open the hook would
+			// hand the provider URL to yt-dlp's generic extractor.
+			"--ytdl=no"}
 		if o.SoftwareDecoding {
 			args = append(args, "--hwdec=no")
 		} else {
@@ -76,21 +85,45 @@ var known = []struct {
 		if o.Volume > 0 {
 			args = append(args, "--volume="+strconv.Itoa(o.Volume))
 		}
-		return append(args, "--", url)
+		if l.unsafeScheme {
+			// mpv refuses udp:// read from a playlist. The flag is scoped to
+			// our own one-entry file, whose URL already passed IsStreamURL.
+			return append(args, "--{", "--playlist="+l.list, "--load-unsafe-playlists", "--}")
+		}
+		return append(args, "--playlist="+l.list)
 	}},
-	{"vlc", "VLC", "vlc", []string{OptSoftwareDecoding, OptCacheSecs}, func(title, url string, o Options) []string {
-		args := []string{"--meta-title=Herakleo · " + title}
+	// The #EXTINF line names the item: VLC's --meta-title would only label
+	// the playlist node, not the stream it expands to.
+	{"vlc", "VLC", "vlc", []string{OptSoftwareDecoding, OptCacheSecs}, func(l launch, o Options) []string {
+		var args []string
 		if o.SoftwareDecoding {
 			args = append(args, "--avcodec-hw=none")
 		}
 		if o.CacheSecs > 0 {
 			args = append(args, "--network-caching="+strconv.Itoa(o.CacheSecs*1000))
 		}
-		return append(args, url)
+		return append(args, l.list)
 	}},
-	{"celluloid", "Celluloid", "celluloid", nil, func(_, url string, _ Options) []string { return []string{url} }},
-	{"haruna", "Haruna", "haruna", nil, func(_, url string, _ Options) []string { return []string{url} }},
-	{"smplayer", "SMPlayer", "smplayer", nil, func(_, url string, _ Options) []string { return []string{url} }},
+	{"celluloid", "Celluloid", "celluloid", nil, func(l launch, _ Options) []string {
+		// Celluloid is libmpv, so it has mpv's udp-from-playlist refusal; a
+		// fixed flag, not a pass-through of anything the UI sends.
+		if l.unsafeScheme {
+			return []string{"--mpv-load-unsafe-playlists=yes", l.list}
+		}
+		return []string{l.list}
+	}},
+	{"haruna", "Haruna", "haruna", nil, func(l launch, _ Options) []string { return []string{l.list} }},
+	{"smplayer", "SMPlayer", "smplayer", nil, func(l launch, _ Options) []string { return []string{l.list} }},
+}
+
+// launch is what a player is started with: never the stream URL itself.
+type launch struct {
+	// Window/item title, already passed through displayTitle.
+	title string
+	// Absolute path of the playlist file holding the URL.
+	list string
+	// The URL uses a scheme mpv only opens from a playlist when told to.
+	unsafeScheme bool
 }
 
 // Info describes a supported player for the settings screen.
@@ -126,13 +159,15 @@ func Known(id string) bool {
 type Player struct {
 	mu  sync.Mutex
 	cmd *exec.Cmd
+	// Playlist file of the running player.
+	list string
 }
 
 // Play opens the stream in the chosen player, closing whatever was playing before.
 func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 	// Checked here too because caches written before the parser filtered
-	// schemes may hold anything. It also guarantees the URL starts with a
-	// scheme, so it can never be parsed as a flag by players without "--".
+	// schemes may hold anything. It also rejects control characters, so the
+	// URL stays on its own line in the playlist file.
 	if !playlist.IsStreamURL(streamURL) {
 		return errors.New("stream_url_forbidden")
 	}
@@ -151,17 +186,34 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 		return fmt.Errorf("player_missing: %s", p.name)
 	}
 
+	title = displayTitle(title, streamURL)
+	dir, err := playlistDir()
+	if err != nil {
+		return fmt.Errorf("player_launch_failed: %v", err)
+	}
+	removeStale(dir, time.Now().Add(-staleAfter))
+	list, err := writePlaylist(dir, title, streamURL)
+	if err != nil {
+		return fmt.Errorf("player_launch_failed: %v", err)
+	}
+	l := launch{title: title, list: list, unsafeScheme: needsUnsafePlaylist(streamURL)}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.stopLocked()
 
-	cmd := exec.Command(bin, p.args(title, streamURL, o)...)
+	cmd := exec.Command(bin, p.args(l, o)...)
 	if err := cmd.Start(); err != nil {
+		_ = os.Remove(list)
 		return err
 	}
-	m.cmd = cmd
-	// Reap the process whenever it exits, whether the user closed it or we did.
-	go func() { _ = cmd.Wait() }()
+	m.cmd, m.list = cmd, list
+	// Reap the process whenever it exits, whether the user closed it or we
+	// did, and drop its playlist: the file holds the password.
+	go func() {
+		_ = cmd.Wait()
+		_ = os.Remove(list)
+	}()
 	return nil
 }
 
@@ -176,5 +228,10 @@ func (m *Player) stopLocked() {
 	if m.cmd != nil && m.cmd.Process != nil {
 		_ = m.cmd.Process.Kill()
 	}
-	m.cmd = nil
+	// Removed here as well because on app exit the Wait goroutine may not
+	// get to run.
+	if m.list != "" {
+		_ = os.Remove(m.list)
+	}
+	m.cmd, m.list = nil, ""
 }

@@ -37,7 +37,12 @@ func main() {
 		Name:     "Herakleo",
 		Icon:     icon,
 		Services: []application.Service{application.NewService(&App{lib: lib})},
-		Assets:   application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+			// The webview may only call App's methods (runtimeguard.go), not
+			// the rest of the Wails runtime (OpenURL, clipboard, dialogs...).
+			Middleware: guardRuntime,
+		},
 		Linux: application.LinuxOptions{
 			// Under GTK 4 the Wayland app_id (the window class Hyprland and
 			// docks match .desktop files on) comes from the application ID,

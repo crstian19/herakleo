@@ -170,12 +170,18 @@ func (a *App) LogoColors(ctx context.Context, urls []string) map[string]string {
 }
 
 // PickPlaylistFile returns "" when the dialog is cancelled. Dialog titles come
-// from the UI so they follow its language.
+// from the UI so they follow its language. Only paths returned here can be
+// saved as m3u_file sources (library.AllowFile).
 func (a *App) PickPlaylistFile(title string) (string, error) {
-	return application.Get().Dialog.OpenFile().
+	path, err := application.Get().Dialog.OpenFile().
 		SetTitle(title).
 		AddFilter("M3U (*.m3u, *.m3u8)", "*.m3u;*.m3u8").
 		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	a.lib.AllowFile(path)
+	return path, nil
 }
 
 func playerOptions(s library.Settings) player.Options {

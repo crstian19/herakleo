@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,7 +16,15 @@ const (
 	// Parallel logo downloads per batch; the webview fetches the same logos,
 	// so keep it modest.
 	colorWorkers = 8
+	// Failures stay in memory for the session; past this many cached URLs
+	// they are dropped (and retried) so a long session cannot grow the map
+	// without bound. Successes are bounded by the library's logos.
+	maxColorCache = 50_000
 )
+
+// colorSlots caps downloads across overlapping LogoColors calls, which the
+// UI issues while scrolling; colorWorkers alone is per call.
+var colorSlots = make(chan struct{}, colorWorkers)
 
 // LogoColors returns "#rrggbb" (or "" when unusable) for each logo URL.
 // Results are cached in memory and in colors.json, shared with the Tauri
@@ -50,9 +59,12 @@ func (l *Library) LogoColors(ctx context.Context, urls []string) map[string]stri
 	for range min(colorWorkers, len(todo)) {
 		wg.Go(func() {
 			for u := range jobs {
-				c, err := logocolor.FromURL(ctx, u)
-				if err != nil {
-					c = ""
+				c := ""
+				select {
+				case colorSlots <- struct{}{}:
+					c, _ = logocolor.FromURL(ctx, u)
+					<-colorSlots
+				case <-ctx.Done():
 				}
 				mu.Lock()
 				out[u] = c
@@ -68,6 +80,9 @@ func (l *Library) LogoColors(ctx context.Context, urls []string) map[string]stri
 
 	l.colorMu.Lock()
 	defer l.colorMu.Unlock()
+	if len(l.colors)+len(todo) > maxColorCache {
+		maps.DeleteFunc(l.colors, func(_, c string) bool { return c == "" })
+	}
 	changed := false
 	for _, u := range todo {
 		l.colors[u] = out[u]
