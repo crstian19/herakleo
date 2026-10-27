@@ -1,0 +1,23 @@
+node_modules/
+frontend/dist/
+frontend/dist-mock/
+wails/frontend/
+wails/build/bin/
+tauri/src-tauri/target/
+tauri/src-tauri/gen/
+.env
+
+# Arch packaging outputs (just package-arch)
+packaging/arch/**/src/
+packaging/arch/**/pkg/
+packaging/arch/**/*.pkg.tar.zst
+packaging/arch/**/herakleo-*.tar.gz
+profiles/
+
+# Design sources and working notes: local only. The PKGBUILDs need the two
+# app icons, so those stay tracked.
+assets/*
+!assets/herakleo-tauri.png
+!assets/herakleo-wails.png
+video/BRIEF.md
+frontend/package.json.md5
