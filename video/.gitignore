@@ -1,0 +1,10 @@
+node_modules/
+out/
+.env
+
+# Media stays local: voice is regenerated with `bun run voice`, the music is a
+# CC0 download (public/music/CREDITS.md), font and logo are copies from the app.
+public/*
+!public/music/
+public/music/*
+!public/music/CREDITS.md

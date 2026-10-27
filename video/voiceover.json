@@ -1,0 +1,16 @@
+{
+  "model": "kokoro",
+  "voice": "af_heart",
+  "speed": 1,
+  "loudnorm": { "I": -16, "TP": -1.5, "LRA": 11 },
+  "lines": [
+    { "id": "01", "text": "Your playlist has thousands of channels." },
+    { "id": "02", "text": "Finding one shouldn't feel like work." },
+    { "id": "03", "text": "Meet Herakleo." },
+    { "id": "04", "text": "Add an M3U link, or your Xtream account." },
+    { "id": "05", "text": "Search, and it's right there." },
+    { "id": "06", "text": "Press play. It opens in mpv." },
+    { "id": "07", "text": "Smooth, even with sixty-five thousand channels." },
+    { "id": "08", "text": "Free, and open source." }
+  ]
+}

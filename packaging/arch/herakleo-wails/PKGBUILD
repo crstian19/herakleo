@@ -1,0 +1,95 @@
+# Maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+#
+# Local package: the source is a tarball of the working tree made by
+# `just package-arch`. Coexists with herakleo-tauri:
+# no file is shared between the two packages.
+
+pkgname=herakleo-wails
+pkgver=0.1.0
+pkgrel=12
+pkgdesc='Desktop IPTV player (M3U + Xtream Codes) - Wails build'
+arch=('x86_64')
+url='https://github.com/crstian19/herakleo'
+license=('GPL-3.0-or-later')
+# Wails v3: GTK 4 + webkitgtk-6.0 (scrolls at the monitor's refresh rate).
+depends=(
+  'webkitgtk-6.0'
+  'gtk4'
+  'libsoup3'
+  'glib2'
+  'libx11'
+  'hicolor-icon-theme'
+  'glibc'
+)
+makedepends=(
+  'go'
+  'bun'
+  'nodejs'
+  'pkgconf'
+  'imagemagick'
+)
+optdepends=(
+  'mpv: default video player'
+  'vlc: alternative video player'
+  'celluloid: alternative video player'
+  'haruna: alternative video player'
+  'smplayer: alternative video player'
+)
+# makepkg's LTO flags break cgo
+options=('!lto' '!debug')
+source=("herakleo-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+_goenv() {
+  export GOPATH="$srcdir/gopath"
+  export GOBIN="$GOPATH/bin"
+  export PATH="$GOBIN:$PATH"
+  export GOFLAGS='-buildmode=pie -trimpath -modcacherw'
+  export CGO_ENABLED=1
+  export CGO_CPPFLAGS="$CPPFLAGS"
+  export CGO_CFLAGS="$CFLAGS"
+  export CGO_CXXFLAGS="$CXXFLAGS"
+  export CGO_LDFLAGS="$LDFLAGS"
+}
+
+prepare() {
+  cd "herakleo-$pkgver"
+  _goenv
+  (cd wails && go mod download)
+  (cd frontend && bun install --frozen-lockfile)
+}
+
+build() {
+  cd "herakleo-$pkgver"
+  _goenv
+  # Wails v3 needs no CLI: build the UI, then a plain cgo build that embeds it.
+  (cd frontend && bun run build:wails)
+  (cd wails && go build -tags production -ldflags '-s -w' -o build/bin/herakleo-wails .)
+}
+
+package() {
+  cd "herakleo-$pkgver"
+  install -Dm755 wails/build/bin/herakleo-wails "$pkgdir/usr/bin/herakleo-wails"
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/herakleo-wails/LICENSE"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/herakleo-wails.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Herakleo (Wails)
+GenericName=IPTV Player
+Comment=$pkgdesc
+Exec=herakleo-wails
+Icon=herakleo-wails
+Terminal=false
+Categories=AudioVideo;Video;Player;TV;
+StartupWMClass=me.crstian.herakleo-wails
+DESKTOP
+
+  local size
+  for size in 512 256 128; do
+    install -dm755 "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps"
+    magick assets/herakleo-wails.png -filter point -resize "${size}x${size}" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/herakleo-wails.png"
+  done
+}
