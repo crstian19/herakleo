@@ -121,3 +121,27 @@ func TestAccountInfo(t *testing.T) {
 		t.Fatalf("got %+v, %v", acc, err)
 	}
 }
+
+func TestXtreamGuide(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("action") {
+		case "get_live_categories":
+			_, _ = io.WriteString(w, `[]`)
+		case "get_live_streams":
+			_, _ = io.WriteString(w, `[{"stream_id":7,"name":"La 1","epg_channel_id":" la1.es "},{"stream_id":8,"name":"B","epg_channel_id":null}]`)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	x := Xtream{Server: srv.URL + "/", Username: "u s", Password: "p&w"}
+	got, err := x.LiveChannels(context.Background())
+	if err != nil || len(got) != 2 || got[0].EPGID != "la1.es" || got[1].EPGID != "" {
+		t.Fatalf("%+v, %v", got, err)
+	}
+	g, err := x.GuideURL()
+	if err != nil || g != srv.URL+"/xmltv.php?password=p%26w&username=u+s" {
+		t.Errorf("guide URL %q, %v", g, err)
+	}
+	if _, err := (Xtream{Server: "http://u:p@host"}).GuideURL(); err == nil {
+		t.Error("credentials in the server URL must be refused")
+	}
+}

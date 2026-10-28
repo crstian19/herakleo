@@ -27,6 +27,7 @@ type xtreamStream struct {
 	StreamID   json.RawMessage `json:"stream_id"`
 	Icon       string          `json:"stream_icon"`
 	CategoryID json.RawMessage `json:"category_id"`
+	EPGID      string          `json:"epg_channel_id"`
 }
 
 // LiveChannels lists the account's live TV streams.
@@ -55,6 +56,7 @@ func (x Xtream) LiveChannels(ctx context.Context) ([]Entry, error) {
 				Group: groups[rawID(s.CategoryID)],
 				Logo:  logo(s.Icon),
 				URL:   base + "/live/" + user + "/" + pass + "/" + url.PathEscape(id) + ".ts",
+				EPGID: strings.TrimSpace(s.EPGID),
 			})
 		}
 	})
@@ -62,6 +64,17 @@ func (x Xtream) LiveChannels(ctx context.Context) ([]Entry, error) {
 		return nil, err
 	}
 	return entries, nil
+}
+
+// GuideURL is the panel's XMLTV guide. It carries the password, so callers
+// build it when they fetch and never store it.
+func (x Xtream) GuideURL() (string, error) {
+	base, err := x.base()
+	if err != nil {
+		return "", err
+	}
+	q := url.Values{"username": {x.Username}, "password": {x.Password}}
+	return base + "/xmltv.php?" + q.Encode(), nil
 }
 
 // Location is the account as shown in the UI, without credentials.
@@ -141,7 +154,7 @@ func logo(raw string) string {
 }
 
 // rawID normalises IDs that panels send either as numbers or as strings;
-// anything else is no ID. Matches raw_id in playlist.rs.
+// anything else is no ID.
 func rawID(raw json.RawMessage) string {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()

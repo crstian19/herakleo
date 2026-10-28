@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -73,6 +74,13 @@ func (c Clients) For(ctx context.Context, u *url.URL, resolve bool) *http.Client
 		return c.private
 	}
 	return c.public
+}
+
+// SameHost reports whether two http(s) URLs name the same host and port.
+func SameHost(a, b string) bool {
+	ua, errA := ValidateHTTPURL(a)
+	ub, errB := ValidateHTTPURL(b)
+	return errA == nil && errB == nil && strings.EqualFold(ua.Host, ub.Host)
 }
 
 func privateHost(ctx context.Context, host string, resolve bool) bool {

@@ -80,6 +80,12 @@ func (b *body) readErr() error {
 // open starts a GET and returns the body capped at limit bytes. Errors never
 // echo the URL because Xtream URLs carry the account password.
 func open(ctx context.Context, rawURL string, limit int64) (*body, error) {
+	return openWith(ctx, rawURL, limit, true)
+}
+
+// openWith is open where lan=false keeps the request off private networks
+// whatever the host, for URLs that came from a provider, not the user.
+func openWith(ctx context.Context, rawURL string, limit int64, lan bool) (*body, error) {
 	u, err := ValidateHTTPURL(rawURL)
 	if err != nil {
 		return nil, err
@@ -91,7 +97,11 @@ func open(ctx context.Context, rawURL string, limit int64) (*body, error) {
 	// Some providers block Go's default UA; present as a media player.
 	req.Header.Set("User-Agent", "VLC/3.0.21 LibVLC/3.0.21")
 
-	resp, err := clients.For(ctx, u, true).Do(req)
+	client := clients.public
+	if lan {
+		client = clients.For(ctx, u, true)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		var uerr *url.Error
 		if errors.As(err, &uerr) {
@@ -110,40 +120,40 @@ func open(ctx context.Context, rawURL string, limit int64) (*body, error) {
 }
 
 // M3UFromURL downloads and parses a remote playlist as it streams in.
-func M3UFromURL(ctx context.Context, rawURL string) ([]Entry, error) {
+func M3UFromURL(ctx context.Context, rawURL string) (List, error) {
 	b, err := open(ctx, rawURL, MaxPlaylistBytes)
 	if err != nil {
-		return nil, err
+		return List{}, err
 	}
 	defer func() { _ = b.Close() }()
-	entries, err := ParseM3U(b)
+	l, err := ParseM3UList(b)
 	if err != nil {
 		if rerr := b.readErr(); rerr != nil {
-			return nil, rerr
+			return List{}, rerr
 		}
-		return nil, err
+		return List{}, err
 	}
-	return entries, nil
+	return l, nil
 }
 
 // M3UFromFile parses a playlist from disk.
-func M3UFromFile(path string) ([]Entry, error) {
+func M3UFromFile(path string) (List, error) {
 	// O_NONBLOCK so a FIFO does not block the open until a writer shows up;
 	// the fstat below then rejects it. Regular files ignore the flag.
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0) //nolint:gosec // the user picked this file in a native dialog
 	if err != nil {
-		return nil, fmt.Errorf("file_open_failed: %w", err)
+		return List{}, fmt.Errorf("file_open_failed: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	if err != nil {
-		return nil, err
+		return List{}, err
 	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("not_regular_file")
+		return List{}, errors.New("not_regular_file")
 	}
 	if info.Size() > MaxPlaylistBytes {
-		return nil, errors.New("playlist_too_large")
+		return List{}, errors.New("playlist_too_large")
 	}
-	return ParseM3U(io.LimitReader(f, MaxPlaylistBytes))
+	return ParseM3UList(io.LimitReader(f, MaxPlaylistBytes))
 }

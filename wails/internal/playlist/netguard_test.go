@@ -38,7 +38,7 @@ func TestRedirectIntoPrivateAddressBlocked(t *testing.T) {
 	}
 	// A source the user points at the LAN directly keeps working.
 	got, err := M3UFromURL(context.Background(), lan.URL+"/list.m3u")
-	if err != nil || len(got) != 1 {
+	if err != nil || len(got.Entries) != 1 {
 		t.Fatalf("direct LAN URL: %+v, %v", got, err)
 	}
 }

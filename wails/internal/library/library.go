@@ -49,6 +49,12 @@ type source struct {
 	// Xtream account info from the last refresh; zero/empty when unknown.
 	ExpiresAt     int64  `json:"expiresAt,omitempty"`
 	AccountStatus string `json:"accountStatus,omitempty"`
+	// GuideURL is the XMLTV URL the user typed; ListGuideURL the one in the
+	// M3U header. Xtream guides are built from the credentials when fetched.
+	GuideURL       string `json:"guideUrl,omitempty"`
+	ListGuideURL   string `json:"listGuideUrl,omitempty"`
+	GuideUpdatedAt int64  `json:"guideUpdatedAt,omitempty"`
+	GuideChannels  int    `json:"guideChannels,omitempty"`
 }
 
 // channel is the persisted form; URL stays in the backend since Xtream URLs
@@ -59,6 +65,7 @@ type channel struct {
 	Group string `json:"group"`
 	Logo  string `json:"logo"`
 	URL   string `json:"url"`
+	EPGID string `json:"epgId,omitempty"`
 	// lower is Name in lower case, computed once at load (withKeys) so search
 	// and sort never re-lowercase 65k names per query. Not persisted.
 	lower string
@@ -85,6 +92,7 @@ type state struct {
 	HiddenChannels []string       `json:"hiddenChannels"`
 	HiddenGroups   []string       `json:"hiddenGroups"`
 	History        []HistoryEntry `json:"history"`
+	Reminders      []Reminder     `json:"reminders,omitempty"`
 }
 
 // Settings are app preferences that both builds share, unlike the purely
@@ -109,6 +117,7 @@ type Library struct {
 	hiddenChannels map[string]bool
 	hiddenGroups   map[string]bool
 	history        []HistoryEntry
+	reminders      []Reminder
 	settings       Settings
 	channels       map[string][]channel // by source ID
 	// chanGen changes whenever l.channels does; it invalidates sorted (query.go).
@@ -119,6 +128,11 @@ type Library struct {
 	// build changing the files underneath us (sync.go).
 	stateMod time.Time
 	chanMod  map[string]time.Time
+
+	// Guides by source (guide.go), loaded lazily from epg/<id>.json.
+	guideMu  sync.RWMutex
+	guides   map[string]playlist.Guide
+	guideMod map[string]time.Time
 
 	// Logo accent cache (colors.go), separate lock: filled by slow downloads.
 	colorMu sync.Mutex
@@ -139,7 +153,7 @@ func Open(dir string) (*Library, error) {
 	// 0700 because library.json holds passwords; MkdirAll leaves existing
 	// dirs alone, so tighten them too (an older build may have created them).
 	// gosec: dir is the user's config folder, and a directory needs the x bit.
-	for _, d := range []string{dir, filepath.Join(dir, "channels")} {
+	for _, d := range []string{dir, filepath.Join(dir, "channels"), filepath.Join(dir, "epg")} {
 		if err := os.MkdirAll(d, 0o700); err != nil { //nolint:gosec
 			return nil, err
 		}
@@ -147,7 +161,10 @@ func Open(dir string) (*Library, error) {
 			return nil, err
 		}
 	}
-	l := &Library{dir: dir, channels: map[string][]channel{}, chanMod: map[string]time.Time{}, picked: map[string]bool{}}
+	l := &Library{
+		dir: dir, channels: map[string][]channel{}, chanMod: map[string]time.Time{}, picked: map[string]bool{},
+		guides: map[string]playlist.Guide{}, guideMod: map[string]time.Time{},
+	}
 	if err := l.reloadLocked(); err != nil {
 		return nil, err
 	}
@@ -164,6 +181,8 @@ type NewSource struct {
 	Server   string `json:"server"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+	// GuideURL is an optional XMLTV URL; Add only (SetGuideURL changes it).
+	GuideURL string `json:"guideUrl"`
 }
 
 // SourceInfo is a source as the UI sees it.
@@ -177,6 +196,13 @@ type SourceInfo struct {
 	Enabled       bool   `json:"enabled"`
 	ExpiresAt     int64  `json:"expiresAt"`
 	AccountStatus string `json:"accountStatus"`
+	// GuideURL is the guide URL the user set, without credentials.
+	GuideURL string `json:"guideUrl"`
+	// HasGuide: a guide can be fetched (user URL, Xtream panel or list header).
+	HasGuide       bool  `json:"hasGuide"`
+	GuideUpdatedAt int64 `json:"guideUpdatedAt"`
+	// GuideChannels is how many channels the last guide matched.
+	GuideChannels int `json:"guideChannels"`
 }
 
 // Add downloads a new source and stores it. Nothing is saved if loading fails.
@@ -189,12 +215,18 @@ func (l *Library) Add(ctx context.Context, n NewSource) (SourceInfo, error) {
 		Server:   strings.TrimSpace(n.Server),
 		Username: strings.TrimSpace(n.Username),
 		Password: n.Password,
+		GuideURL: strings.TrimSpace(n.GuideURL),
 	}
 	if s.Name == "" {
 		return SourceInfo{}, errors.New("name_required")
 	}
 	if s.Kind == KindM3UFile && !l.wasPicked(s.Path) {
 		return SourceInfo{}, errors.New("file_not_picked")
+	}
+	if s.GuideURL != "" {
+		if _, err := playlist.ValidateHTTPURL(s.GuideURL); err != nil {
+			return SourceInfo{}, err
+		}
 	}
 	id, err := newID()
 	if err != nil {
@@ -386,6 +418,8 @@ func (l *Library) Remove(id string) error {
 		}
 	}
 	l.history = slices.DeleteFunc(l.history, func(h HistoryEntry) bool { return strings.HasPrefix(h.ID, prefix) })
+	l.reminders = slices.DeleteFunc(l.reminders, func(r Reminder) bool { return strings.HasPrefix(r.ChannelID, prefix) })
+	l.dropGuide(id)
 	delete(l.channels, id)
 	delete(l.chanMod, id)
 	l.chanGen++
@@ -471,16 +505,18 @@ func (l *Library) StreamURL(channelID string) (name, streamURL string, err error
 type loadResult struct {
 	entries []playlist.Entry
 	account playlist.Account
+	// guideURL is the M3U header's guide, if any.
+	guideURL string
 }
 
 func load(ctx context.Context, s *source) (loadResult, error) {
 	switch s.Kind {
 	case KindM3UURL:
-		e, err := playlist.M3UFromURL(ctx, s.URL)
-		return loadResult{entries: e}, err
+		l, err := playlist.M3UFromURL(ctx, s.URL)
+		return loadResult{entries: l.Entries, guideURL: l.GuideURL}, err
 	case KindM3UFile:
-		e, err := playlist.M3UFromFile(s.Path)
-		return loadResult{entries: e}, err
+		l, err := playlist.M3UFromFile(s.Path)
+		return loadResult{entries: l.Entries, guideURL: l.GuideURL}, err
 	case KindXtream:
 		if s.Username == "" || s.Password == "" {
 			return loadResult{}, errors.New("credentials_required")
@@ -511,7 +547,7 @@ func (l *Library) storeChannels(s *source, r loadResult) error {
 			continue
 		}
 		seen[id] = true
-		chs = append(chs, channel{ID: id, Name: e.Name, Group: e.Group, Logo: e.Logo, URL: e.URL, lower: strings.ToLower(e.Name)})
+		chs = append(chs, channel{ID: id, Name: e.Name, Group: e.Group, Logo: e.Logo, URL: e.URL, EPGID: e.EPGID, lower: strings.ToLower(e.Name)})
 	}
 
 	data, err := json.Marshal(chs)
@@ -528,6 +564,7 @@ func (l *Library) storeChannels(s *source, r loadResult) error {
 	s.ChannelCount = len(chs)
 	s.UpdatedAt = time.Now().Unix()
 	s.ExpiresAt, s.AccountStatus = r.account.ExpiresAt, r.account.Status
+	s.ListGuideURL = r.guideURL
 	return nil
 }
 
@@ -540,6 +577,7 @@ func (l *Library) saveState() error {
 		HiddenChannels: sortedKeys(l.hiddenChannels),
 		HiddenGroups:   sortedKeys(l.hiddenGroups),
 		History:        append([]HistoryEntry{}, l.history...),
+		Reminders:      l.reminders,
 	}
 	data, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {
@@ -600,6 +638,8 @@ func (s *source) info() SourceInfo {
 	return SourceInfo{
 		ID: s.ID, Name: s.Name, Kind: s.Kind, Location: loc, ChannelCount: s.ChannelCount,
 		UpdatedAt: s.UpdatedAt, Enabled: !s.Disabled, ExpiresAt: s.ExpiresAt, AccountStatus: s.AccountStatus,
+		GuideURL: redactURL(s.GuideURL), HasGuide: s.GuideURL != "" || s.ListGuideURL != "" || s.Kind == KindXtream,
+		GuideUpdatedAt: s.GuideUpdatedAt, GuideChannels: s.GuideChannels,
 	}
 }
 

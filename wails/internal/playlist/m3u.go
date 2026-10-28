@@ -42,23 +42,40 @@ type Entry struct {
 	Group string
 	Logo  string
 	URL   string
+	// EPGID is the channel's ID in the XMLTV guide (tvg-id, epg_channel_id).
+	EPGID string
+}
+
+// List is a parsed playlist plus the guide URL its header names, if any.
+type List struct {
+	Entries []Entry
+	// GuideURL comes from `#EXTM3U url-tvg="…"` (or x-tvg-url); the first
+	// http(s) URL when the header lists several.
+	GuideURL string
 }
 
 // ParseM3U reads an extended M3U playlist. It is lenient on purpose: provider
 // lists are rarely well-formed, so unknown directives are skipped and a URL
 // without a preceding #EXTINF still becomes an entry named after the URL.
 func ParseM3U(r io.Reader) ([]Entry, error) {
+	l, err := ParseM3UList(r)
+	return l.Entries, err
+}
+
+// ParseM3UList is ParseM3U plus the header's guide URL.
+func ParseM3UList(r io.Reader) (List, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
 
 	var (
 		entries []Entry
+		guide   string
 		pending Entry
 		hasInfo bool
 	)
 	for len(entries) < MaxEntries {
 		raw, err := br.ReadString('\n')
 		if err != nil && !errors.Is(err, io.EOF) {
-			return nil, err
+			return List{}, err
 		}
 		if raw == "" && err != nil {
 			break
@@ -67,6 +84,10 @@ func ParseM3U(r io.Reader) ([]Entry, error) {
 		line := strings.TrimSpace(strings.TrimPrefix(raw, "\uFEFF"))
 		switch {
 		case line == "" || len(line) > maxLine:
+		case strings.HasPrefix(line, "#EXTM3U"):
+			if guide == "" {
+				guide = headerGuide(line)
+			}
 		case strings.HasPrefix(line, "#EXTINF:"):
 			pending = parseExtinf(line[len("#EXTINF:"):])
 			hasInfo = true
@@ -91,7 +112,23 @@ func ParseM3U(r io.Reader) ([]Entry, error) {
 		}
 	}
 	// err above is io.EOF here: the end of the list, not a failure.
-	return entries, nil //nolint:nilerr
+	return List{Entries: entries, GuideURL: guide}, nil //nolint:nilerr
+}
+
+// headerGuide picks the guide URL from an #EXTM3U line. Providers put one or
+// several comma-separated URLs in url-tvg or x-tvg-url.
+func headerGuide(line string) string {
+	attrs := attributes(line)
+	for _, key := range []string{"url-tvg", "x-tvg-url", "tvg-url"} {
+		for _, u := range strings.Split(attrs[key], ",") {
+			if u = strings.TrimSpace(u); u != "" {
+				if _, err := ValidateHTTPURL(u); err == nil {
+					return u
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // parseExtinf parses `-1 tvg-logo="x" group-title="y",Display Name`. The name
@@ -122,6 +159,8 @@ func parseExtinf(s string) Entry {
 			e.Group = val
 		case "tvg-logo":
 			e.Logo = val
+		case "tvg-id":
+			e.EPGID = val
 		case "tvg-name":
 			if e.Name == "" {
 				e.Name = val

@@ -82,6 +82,7 @@ func (l *Library) reloadLocked() error {
 	l.hiddenChannels = toSet(st.HiddenChannels)
 	l.hiddenGroups = toSet(st.HiddenGroups)
 	l.history = append([]HistoryEntry{}, st.History...)
+	l.reminders = append([]Reminder{}, st.Reminders...)
 	l.settings = st.Settings
 	l.channels, l.chanMod = channels, chanMod
 	l.chanGen++
@@ -100,7 +101,7 @@ func (l *Library) removeOrphans() {
 		known[s.ID+".json"] = true
 	}
 	cutoff := time.Now().Add(-orphanGrace)
-	for _, dir := range []string{l.dir, filepath.Join(l.dir, "channels")} {
+	for _, dir := range []string{l.dir, filepath.Join(l.dir, "channels"), filepath.Join(l.dir, "epg")} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue

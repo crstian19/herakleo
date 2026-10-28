@@ -59,3 +59,29 @@ func TestBOMAndXtreamIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestGuideIDsAndHeader(t *testing.T) {
+	list := "#EXTM3U url-tvg=\"ftp://bad, https://epg.example/guide.xml.gz,https://other/x.xml\"\n" +
+		"#EXTINF:-1 tvg-id=\"la1.es\" tvg-name=\"La 1\",La 1 HD\nhttp://s/la1\n" +
+		"#EXTINF:-1,No id\nhttp://s/x\n"
+	got, err := ParseM3UList(strings.NewReader(list))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GuideURL != "https://epg.example/guide.xml.gz" {
+		t.Errorf("guide URL %q", got.GuideURL)
+	}
+	if len(got.Entries) != 2 || got.Entries[0].EPGID != "la1.es" || got.Entries[1].EPGID != "" {
+		t.Errorf("entries %+v", got.Entries)
+	}
+	for header, want := range map[string]string{
+		`#EXTM3U x-tvg-url="http://a/epg.xml"`: "http://a/epg.xml",
+		`#EXTM3U url-tvg="file:///etc/passwd"`: "",
+		`#EXTM3U`:                              "",
+	} {
+		l, _ := ParseM3UList(strings.NewReader(header + "\n#EXTINF:-1,A\nhttp://s/a\n"))
+		if l.GuideURL != want {
+			t.Errorf("%s: got %q, want %q", header, l.GuideURL, want)
+		}
+	}
+}
