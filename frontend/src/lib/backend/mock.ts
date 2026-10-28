@@ -1,4 +1,4 @@
-import type { AppSettings, Backend, Channel, SourceInfo } from "../types";
+import type { AppSettings, Backend, Channel, Programme, Reminder, SourceInfo } from "../types";
 
 // In-memory backend for working on the UI in a plain browser (`bun run dev:mock`).
 // Enough groups to exercise the sidebar filter; real lists often have hundreds.
@@ -33,6 +33,10 @@ const sources: SourceInfo[] = [
     enabled: true,
     expiresAt: 0,
     accountStatus: "",
+    guideUrl: "",
+    hasGuide: true,
+    guideUpdatedAt: now - 3600,
+    guideChannels: count - Math.floor(count / 5),
   },
   {
     id: "xtream",
@@ -44,6 +48,10 @@ const sources: SourceInfo[] = [
     enabled: false,
     expiresAt: now + 20 * 86400,
     accountStatus: "Active",
+    guideUrl: "",
+    hasGuide: true,
+    guideUpdatedAt: 0,
+    guideChannels: 0,
   },
 ];
 
@@ -57,6 +65,23 @@ const channels: Channel[] = Array.from({ length: count }, (_, i) => ({
   hidden: false,
 }));
 const hiddenGroups = new Set<string>();
+let reminders: Reminder[] = [];
+
+// A fake schedule: blocks of 30 to 90 minutes from the last full hour, the
+// same for a channel every time. One channel in five has no guide.
+const shows = ["Telediario", "El tiempo", "Cine de barrio", "Documental", "Fútbol: previa", "Concierto", "Noticias 24h", "Serie: capítulo 3", "Magazine", "Dibujos"];
+function guideFor(id: string): Programme[] {
+  const i = Number(id.split("-")[1]);
+  if (!Number.isInteger(i) || i % 5 === 4) return [];
+  const out: Programme[] = [];
+  let start = Math.floor(Date.now() / 3_600_000) * 3600 - 3600;
+  for (let k = 0; out.length < 30; k++) {
+    const stop = start + 1800 * (1 + ((i + k) % 3));
+    if (stop > Date.now() / 1000) out.push({ start, stop, title: shows[(i + k) % shows.length]!, desc: k % 2 ? "" : "Programa de prueba del modo demo." });
+    start = stop;
+  }
+  return out;
+}
 let history: string[] = [];
 
 const settings: AppSettings = {
@@ -139,6 +164,34 @@ export const backend: Backend = {
     return delay(undefined);
   },
   logoColors: () => delay({}),
+  refreshGuide: (id) => {
+    const s = sources.find((x) => x.id === id)!;
+    s.guideUpdatedAt = Math.floor(Date.now() / 1000);
+    return delay(s);
+  },
+  setGuideUrl: (id, url) => {
+    const s = sources.find((x) => x.id === id)!;
+    s.guideUrl = url.split("?")[0]!;
+    return delay(s);
+  },
+  nowNext: (ids) => {
+    const t = Date.now() / 1000;
+    const out: Record<string, { now?: Programme; next?: Programme }> = {};
+    for (const id of ids.slice(0, 300)) {
+      const g = guideFor(id);
+      if (!g.length) continue;
+      const on = g[0]!.start <= t;
+      out[id] = { now: on ? g[0] : undefined, next: on ? g[1] : g[0] };
+    }
+    return delay(out);
+  },
+  channelGuide: (id) => delay(guideFor(id)),
+  setReminder: (r, on) => {
+    reminders = reminders.filter((x) => !(x.channelId === r.channelId && x.start === r.start));
+    if (on) reminders = [...reminders, r].sort((a, b) => a.start - b.start);
+    return delay(reminders);
+  },
+  listReminders: () => delay(reminders),
   getSettings: () => delay(settings),
   updateSettings: (patch) => {
     Object.assign(settings, patch);

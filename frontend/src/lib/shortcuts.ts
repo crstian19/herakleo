@@ -76,6 +76,7 @@ export const shortcutGroups: { title: MessageKey; items: Shortcut[] }[] = [
       { keys: ["Enter"], label: "shortcuts.play" },
       { keys: ["F"], label: "shortcuts.favorite" },
       { keys: ["H"], label: "shortcuts.hide" },
+      { keys: ["I"], label: "shortcuts.guide" },
     ],
   },
   {

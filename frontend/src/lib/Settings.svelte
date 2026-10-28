@@ -13,6 +13,8 @@
     settings,
     hiddenGroups,
     refreshing,
+    guideBusy,
+    onrefreshguide,
     onadd,
     onedit,
     onrefresh,
@@ -31,6 +33,9 @@
     settings: AppSettings | null;
     hiddenGroups: string[];
     refreshing: string;
+    /** ID of the list whose guide is downloading, or "". */
+    guideBusy: string;
+    onrefreshguide: (s: SourceInfo) => void;
     onadd: () => void;
     onedit: (s: SourceInfo) => void;
     onrefresh: (s: SourceInfo) => void;
@@ -131,12 +136,28 @@
               <p class="mt-1 text-xs text-muted tabular-nums">
                 {t("settings.listStats", { n: s.channelCount, when: s.updatedAt ? ago(s.updatedAt) : t("settings.never") })}
               </p>
+              {#if s.hasGuide}
+                <p class="mt-0.5 text-xs text-muted tabular-nums">
+                  {s.guideUpdatedAt ? t("settings.guideStats", { n: s.guideChannels, when: ago(s.guideUpdatedAt) }) : t("settings.guideNever")}
+                </p>
+              {/if}
             </div>
             <div class="flex shrink-0 gap-2">
               <button class="btn-ghost px-3 py-1.5 text-sm" disabled={refreshing !== ""} onclick={() => onrefresh(s)}>
                 <span class="inline-block" class:animate-spin={refreshing === s.id}>↻</span>
                 {t("settings.refresh")}
               </button>
+              {#if s.hasGuide}
+                <button
+                  class="btn-ghost px-3 py-1.5 text-sm"
+                  disabled={guideBusy !== ""}
+                  aria-label={t("settings.guideRefreshNamed", { name: s.name })}
+                  onclick={() => onrefreshguide(s)}
+                >
+                  <span class="inline-block" class:animate-spin={guideBusy === s.id}>↻</span>
+                  {t("settings.guideRefresh")}
+                </button>
+              {/if}
               <button class="btn-ghost px-3 py-1.5 text-sm" onclick={() => onedit(s)}>{t("settings.edit")}</button>
               <button
                 class="btn-ghost px-3 py-1.5 text-sm hover:!bg-red-500/15 hover:!text-red-300"

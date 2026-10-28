@@ -21,6 +21,8 @@
   let server = $state("");
   let username = $state("");
   let password = $state("");
+  let guideUrl = $state("");
+  let clearGuide = $state(false);
   let busy = $state(false);
   let error = $state("");
 
@@ -81,10 +83,14 @@
         : kind === "m3u_file"
           ? { kind, name: name.trim(), path }
           : { kind, name: name.trim(), server: server.trim(), username: username.trim(), password };
+    const guide = guideUrl.trim();
     busy = true;
     error = "";
     try {
-      onsaved(initial ? await api.updateSource(initial.id, req) : await api.addSource(req));
+      if (!initial) return onsaved(await api.addSource({ ...req, guideUrl: guide }));
+      let saved = await api.updateSource(initial.id, req);
+      if (guide || clearGuide) saved = await api.setGuideUrl(initial.id, clearGuide ? "" : guide);
+      onsaved(saved);
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -141,6 +147,24 @@
           <p class="text-xs text-muted">{t("dialog.credentialsWarning")}</p>
         {/if}
       {/if}
+      <div class="space-y-1 border-t border-line pt-3">
+        {#if !clearGuide}
+          <input
+            class="field"
+            type="url"
+            placeholder={initial?.guideUrl ? keep(initial.guideUrl, "") : t("dialog.guideUrl")}
+            aria-label={t("dialog.guideUrl")}
+            bind:value={guideUrl}
+          />
+        {/if}
+        <p class="text-xs text-muted">{t("dialog.guideHint")}</p>
+        {#if initial?.guideUrl}
+          <label class="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" class="accent-accent" bind:checked={clearGuide} />
+            {t("dialog.guideClear")}
+          </label>
+        {/if}
+      </div>
     </div>
 
     {#if error}

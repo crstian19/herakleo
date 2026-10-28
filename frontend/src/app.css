@@ -418,6 +418,51 @@ select.field option {
   color: var(--color-accent);
   border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
+/* What is on now: one line and a progress bar along the bottom edge. The bar
+   scales (transform) rather than changing width, so a tick never relayouts. */
+/* Every card keeps the room when the list has a guide, so logos line up. */
+.channel-grid.with-guide .card-inner {
+  padding-bottom: 1.9rem;
+}
+.card-now {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.55rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-align: left;
+}
+.card-now:hover {
+  color: var(--color-text);
+}
+.card-now-title {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-now-bar {
+  height: 2px;
+  border-radius: 1px;
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+.card-now-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--app-color);
+  transform-origin: left;
+}
+
 /* Same chip as the star, on the opposite corner; shown on hover (always on touch). */
 .card-hide {
   position: absolute;

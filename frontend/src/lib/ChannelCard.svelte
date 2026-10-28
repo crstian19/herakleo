@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { accentFor, type Channel } from "./api";
+  import { accentFor, type Channel, type NowNext } from "./api";
   import { benchFlags, perfEvent } from "./bench";
   import { t } from "./i18n.svelte";
 
@@ -8,9 +8,12 @@
     index,
     color = "",
     playing = false,
+    nownext,
+    clock = 0,
     onplay,
     onfavorite,
     onhide,
+    onguide,
   }: {
     channel: Channel;
     /** Position in the whole loaded list (the grid is virtualised); keyboard navigation uses it. */
@@ -18,11 +21,21 @@
     /** Accent from the logo; falls back to a hue derived from the name. */
     color?: string;
     playing?: boolean;
+    /** What is on now and next, when the list has a guide. */
+    nownext?: NowNext;
+    /** Unix seconds, ticked by the app once a minute for the progress bar. */
+    clock?: number;
     onplay: (c: Channel) => void;
     onfavorite: (c: Channel) => void;
     /** Hides the channel, or unhides it when it is already hidden. */
     onhide: (c: Channel) => void;
+    /** Opens the channel's programme guide. */
+    onguide?: (c: Channel) => void;
   } = $props();
+
+  // A programme that ended since the last refresh no longer counts as "now".
+  const now = $derived(nownext?.now && nownext.now.stop > clock ? nownext.now : undefined);
+  const progress = $derived(now ? Math.min(1, Math.max(0, (clock - now.start) / (now.stop - now.start))) : 0);
 
   let logoFailed = $state(false);
   let card: HTMLElement;
@@ -122,4 +135,20 @@
     {/if}
     <p class="card-name">{channel.name}</p>
   </div>
+
+  {#if now}
+    <button
+      class="card-now"
+      tabindex="-1"
+      title={nownext?.next ? `${now.title} · ${t("guide.next")}: ${nownext.next.title}` : now.title}
+      aria-label={t("card.guide")}
+      onclick={(e) => {
+        e.stopPropagation();
+        onguide?.(channel);
+      }}
+    >
+      <span class="card-now-title">{now.title}</span>
+      <span class="card-now-bar"><span style="transform: scaleX({progress})"></span></span>
+    </button>
+  {/if}
 </div>

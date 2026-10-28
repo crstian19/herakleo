@@ -9,6 +9,9 @@
     type ChannelSort,
     type ChannelView,
     type Group,
+    type NowNext,
+    type Programme,
+    type Reminder,
     type SettingsPatch,
     type SourceInfo,
   } from "./lib/api";
@@ -24,11 +27,27 @@
   import DiagnosticsDialog from "./lib/DiagnosticsDialog.svelte";
   import { buildReport } from "./lib/diagnostics";
   import SourceDialog from "./lib/SourceDialog.svelte";
+  import GuideDialog from "./lib/GuideDialog.svelte";
 
   const PAGE = 120; // cards fetched per load in scroll mode
   const PAGE_SIZE = 60; // cards per page in pagination mode (the default)
 
   let sources = $state<SourceInfo[]>([]);
+
+  // ── Guide (EPG) ──
+  // Unix seconds, ticked every 30 s: progress bars, expired "now" entries and reminders follow it.
+  let clock = $state(Math.floor(Date.now() / 1000));
+  // Now/next per channel ID, asked for the cards on screen only. guideUntil is
+  // when an entry goes stale (its programme ends), so it is asked again.
+  let guide = $state<Record<string, NowNext>>({});
+  const guideUntil = new Map<string, number>();
+  const GUIDE_STALE = 12 * 3600;
+  let guideBusy = $state("");
+  let guideFor = $state<Channel | null>(null);
+  let reminders = $state<Reminder[]>([]);
+  const announced = new Set<string>();
+  let alertFor = $state<Reminder | null>(null);
+  const anyGuide = $derived(sources.some((s) => s.enabled && s.guideUpdatedAt > 0));
   let groups = $state<Group[]>([]);
   let hiddenGroups = $state<string[]>([]);
   let channels = $state<Channel[]>([]);
@@ -247,6 +266,12 @@
     tick().then(updateWindow);
   });
 
+  $effect(() => {
+    const items = visible;
+    void anyGuide;
+    untrack(() => requestGuide(items));
+  });
+
   // Reloads what the sidebar and grid show after anything that changes them.
   function reloadLists() {
     loadGroups();
@@ -366,8 +391,16 @@
       const bench = await api.benchMode();
       if (bench === "full") return benchUnattended();
       if (bench.startsWith("wheel")) return wheelSession(bench.split(":")[1] ?? "baseline");
-      if (appSettings?.refreshOnStart) refreshAll();
+      if (appSettings?.refreshOnStart) await refreshAll();
+      reminders = await api.listReminders().catch(() => []);
+      checkReminders();
+      refreshStaleGuides();
     })();
+    const ticker = setInterval(() => {
+      clock = Math.floor(Date.now() / 1000);
+      requestGuide(visible);
+      checkReminders();
+    }, 30_000);
     const io = new IntersectionObserver((entries) => entries[0]?.isIntersecting && loadChannels(false), {
       root: scroller,
       rootMargin: "600px",
@@ -377,6 +410,7 @@
     const ro = new ResizeObserver(scheduleWindow);
     if (scroller) ro.observe(scroller);
     return () => {
+      clearInterval(ticker);
       io.disconnect();
       ro.disconnect();
     };
@@ -397,6 +431,78 @@
     view = "channels";
     group = name;
     navOpen = false;
+  }
+
+  // Asks now/next for the given cards that have no fresh answer yet.
+  async function requestGuide(items: Channel[]) {
+    if (!anyGuide) return;
+    const ids = items.map((c) => c.id).filter((id) => (guideUntil.get(id) ?? 0) <= clock);
+    for (let i = 0; i < ids.length; i += 200) {
+      const batch = ids.slice(i, i + 200);
+      batch.forEach((id) => guideUntil.set(id, clock + 60)); // no repeat while in flight
+      try {
+        const got = await api.nowNext(batch);
+        const next = { ...guide };
+        for (const id of batch) {
+          const nn = got[id];
+          if (nn) next[id] = nn;
+          else delete next[id];
+          // Stale when the current programme ends (or the next starts); else in 30 min.
+          guideUntil.set(id, nn?.now?.stop ?? nn?.next?.start ?? clock + 1800);
+        }
+        guide = next;
+      } catch {
+        // The guide is extra: cards simply show no programme.
+      }
+    }
+  }
+
+  function forgetGuide() {
+    guideUntil.clear();
+    guide = {};
+    requestGuide(visible);
+  }
+
+  async function refreshGuide(s: SourceInfo, quiet = false) {
+    if (guideBusy) return;
+    guideBusy = s.id;
+    try {
+      const updated = await api.refreshGuide(s.id);
+      sources = sources.map((x) => (x.id === updated.id ? updated : x));
+      if (!quiet) notify(t("toast.guideCount", { name: updated.name, n: updated.guideChannels }));
+      forgetGuide();
+    } catch (err) {
+      if (!quiet) notify(`${s.name}: ${errorMessage(err)}`, true);
+    } finally {
+      guideBusy = "";
+    }
+  }
+
+  // On start: guides older than GUIDE_STALE, one list at a time, quietly.
+  async function refreshStaleGuides() {
+    for (const s of sources.filter((x) => x.enabled && x.hasGuide && clock - x.guideUpdatedAt > GUIDE_STALE)) {
+      await refreshGuide(s, true);
+    }
+  }
+
+  async function remind(c: Channel, p: Programme, on: boolean) {
+    try {
+      reminders = await api.setReminder({ channelId: c.id, channel: c.name, title: p.title, start: p.start, stop: p.stop }, on);
+      notify(on ? t("guide.reminderSet", { title: p.title }) : t("guide.reminderOff"));
+    } catch (err) {
+      notify(errorMessage(err), true);
+    }
+  }
+
+  // Announces each reminder once, from 30 s before its start until it ends.
+  function checkReminders() {
+    for (const r of reminders) {
+      const key = `${r.channelId}@${r.start}`;
+      if (r.start <= clock + 30 && r.stop > clock && !announced.has(key)) {
+        announced.add(key);
+        alertFor = r;
+      }
+    }
   }
 
   async function play(c: Channel) {
@@ -515,6 +621,7 @@
     notify(t("toast.listCount", { name: s.name, n: s.channelCount }));
     if (isNew) show({ sourceId: s.id });
     else reloadLists();
+    if (s.hasGuide && (isNew || !s.guideUpdatedAt)) refreshGuide(s, true);
   }
 
   async function clearHistory() {
@@ -658,7 +765,7 @@
 
   function onkey(e: KeyboardEvent) {
     // The list dialog, the support popup and the help own their keys while open.
-    if (dialog || supportOpen) return;
+    if (dialog || supportOpen || guideFor) return;
     if (helpOpen) {
       if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
@@ -733,6 +840,7 @@
     const cols = win.cols;
     if (e.key === "f" || e.key === "F") return (toggleFavorite(c), true);
     if (e.key === "h" || e.key === "H") return (toggleHidden(c), true);
+    if (e.key === "i" || e.key === "I") return ((guideFor = c), true);
     if (e.key === "ArrowUp" && index < cols) return (focusSearch(), true);
     if (e.key === "ArrowLeft" && index % cols === 0) return (focusSidebar(), true);
     const rows = Math.max(1, Math.floor((scroller?.clientHeight ?? 0) / win.rowH));
@@ -968,6 +1076,8 @@
           settings={appSettings}
           {hiddenGroups}
           {refreshing}
+          {guideBusy}
+          onrefreshguide={(s) => refreshGuide(s)}
           onadd={() => (dialog = { editing: null })}
           onedit={(s) => (dialog = { editing: s })}
           onrefresh={(s) => refresh(s)}
@@ -1006,16 +1116,19 @@
       {:else}
         <div bind:this={gridWrap} class="pt-2">
           <div style="height: {win.padTop}px"></div>
-          <div bind:this={gridEl} class="channel-grid">
+          <div bind:this={gridEl} class="channel-grid" class:with-guide={anyGuide}>
             {#each visible as c, i (c.id)}
               <ChannelCard
                 channel={c}
                 index={win.start + i}
               color={prefs.logoColors ? logoColors[c.logo] : ""}
               playing={c.id === playingId}
+              nownext={guide[c.id]}
+              {clock}
               onplay={play}
               onfavorite={toggleFavorite}
                 onhide={toggleHidden}
+                onguide={(ch) => (guideFor = ch)}
               />
             {/each}
           </div>
@@ -1053,6 +1166,37 @@
 
 {#if helpOpen}
   <ShortcutsHelp onclose={() => (helpOpen = false)} />
+{/if}
+
+{#if guideFor}
+  <GuideDialog
+    channel={guideFor}
+    {reminders}
+    onclose={() => (guideFor = null)}
+    onplay={(c) => ((guideFor = null), play(c))}
+    onremind={(p, on) => guideFor && remind(guideFor, p, on)}
+  />
+{/if}
+
+{#if alertFor}
+  {@const r = alertFor}
+  <div
+    class="fixed right-6 bottom-6 z-50 w-80 max-w-[calc(100%-3rem)] rounded-2xl border border-accent/40 bg-[#111118] p-4 shadow-2xl"
+    role="alert"
+  >
+    <p class="text-xs font-semibold tracking-wider text-accent uppercase">{t("reminder.starting")}</p>
+    <p class="mt-1 font-medium">{t("reminder.on", { title: r.title, channel: r.channel })}</p>
+    <div class="mt-3 flex justify-end gap-2">
+      <button class="btn-ghost px-3 py-1.5 text-sm" onclick={() => (alertFor = null)}>{t("reminder.dismiss")}</button>
+      <button
+        class="btn-accent px-3 py-1.5 text-sm"
+        onclick={() => {
+          alertFor = null;
+          play({ id: r.channelId, name: r.channel } as Channel);
+        }}>{t("guide.watch")}</button
+      >
+    </div>
+  </div>
 {/if}
 
 {#if dialog}

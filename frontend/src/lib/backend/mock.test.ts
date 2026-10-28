@@ -27,6 +27,7 @@ const methods: (keyof Backend)[] = [
   "listGroups", "listChannels", "setFavorite", "setChannelHidden", "setGroupHidden", "listHiddenGroups",
   "play", "clearHistory", "logoColors", "getSettings", "updateSettings", "exportFavorites",
   "importFavorites", "pickPlaylistFile", "benchMode", "openLink", "diagnostics", "benchReport",
+  "refreshGuide", "setGuideUrl", "nowNext", "channelGuide", "setReminder", "listReminders",
 ];
 
 describe("mock backend", () => {
@@ -124,5 +125,41 @@ describe("settings", () => {
     const next = await api.updateSettings({ player: "vlc", volume: 40 });
     expect(next.player).toBe("vlc");
     expect((await api.getSettings()).volume).toBe(40);
+  });
+});
+
+describe("guide", () => {
+  it("answers now/next only for channels with a schedule, capped at 300", async () => {
+    const ids = Array.from({ length: 400 }, (_, i) => `demo-${i}`);
+    const got = await api.nowNext(ids);
+    const now = Date.now() / 1000;
+    expect(Object.keys(got).length).toBeLessThanOrEqual(300);
+    expect(got["demo-4"]).toBeUndefined(); // one channel in five has no guide
+    const nn = got["demo-0"]!;
+    expect(nn.now!.start).toBeLessThanOrEqual(now);
+    expect(nn.now!.stop).toBeGreaterThan(now);
+    expect(nn.next!.start).toBe(nn.now!.stop);
+  });
+
+  it("lists a channel's programmes in order, from the one on air", async () => {
+    const g = await api.channelGuide("demo-1");
+    expect(g.length).toBeGreaterThan(1);
+    expect(g[0]!.stop).toBeGreaterThan(Date.now() / 1000);
+    g.slice(1).forEach((p, i) => expect(p.start).toBe(g[i]!.stop));
+    expect(await api.channelGuide("demo-4")).toEqual([]);
+  });
+
+  it("adds and removes reminders without duplicates", async () => {
+    const r = { channelId: "demo-0", channel: "La 1", title: "Cine", start: 2000, stop: 3000 };
+    expect(await api.setReminder(r, true)).toHaveLength(1);
+    expect(await api.setReminder({ ...r, start: 1000 }, true)).toHaveLength(2);
+    expect((await api.setReminder(r, true)).map((x) => x.start)).toEqual([1000, 2000]);
+    expect(await api.setReminder(r, false)).toHaveLength(1);
+    expect(await api.listReminders()).toHaveLength(1);
+  });
+
+  it("drops the query from a guide URL it shows", async () => {
+    const s = await api.setGuideUrl("demo", "https://epg.example/guide.xml?token=secret");
+    expect(s.guideUrl).toBe("https://epg.example/guide.xml");
   });
 });

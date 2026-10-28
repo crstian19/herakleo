@@ -128,3 +128,19 @@ describe("ago and date", () => {
     expect(ago(old)).toMatch(/2026/);
   });
 });
+
+describe("guide times", () => {
+  it("names today and tomorrow, and dates further days", async () => {
+    const { dayLabel } = await load({ languages: ["es"] });
+    const noon = new Date(2026, 9, 28, 12, 0).getTime();
+    const at = (h: number, dayOffset = 0) => new Date(2026, 9, 28 + dayOffset, h, 30).getTime() / 1000;
+    expect(dayLabel(at(23), noon)).toBe("Hoy");
+    expect(dayLabel(at(1, 1), noon)).toBe("Mañana");
+    expect(dayLabel(at(9, 2), noon)).toMatch(/viernes/);
+  });
+
+  it("formats hours and minutes in the UI language", async () => {
+    const { clockTime } = await load({ languages: ["es"] });
+    expect(clockTime(new Date(2026, 9, 28, 7, 5).getTime() / 1000)).toBe("07:05");
+  });
+});

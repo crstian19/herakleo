@@ -18,6 +18,37 @@ export interface SourceInfo {
   expiresAt: number;
   /** Xtream only: status as the panel words it ("Active", "Expired"…); "" when unknown. */
   accountStatus: string;
+  /** The XMLTV guide URL the user set, without query or credentials; "" when none. */
+  guideUrl: string;
+  /** A guide can be fetched: the user's URL, the Xtream panel or the list's header. */
+  hasGuide: boolean;
+  /** Unix seconds of the last guide download; 0 when never. */
+  guideUpdatedAt: number;
+  /** Channels the last guide matched. */
+  guideChannels: number;
+}
+
+/** One guide entry; times are unix seconds. */
+export interface Programme {
+  start: number;
+  stop: number;
+  title: string;
+  desc?: string;
+}
+
+export interface NowNext {
+  now?: Programme;
+  next?: Programme;
+}
+
+/** Announced by the UI when the programme starts. */
+export interface Reminder {
+  channelId: string;
+  /** Channel name, so the reminder reads well even if the list changes. */
+  channel: string;
+  title: string;
+  start: number;
+  stop: number;
 }
 
 export interface Channel {
@@ -57,10 +88,12 @@ export interface ChannelPage {
   total: number;
 }
 
-export type NewSource =
+/** guideUrl is an optional XMLTV URL, only read when adding (setGuideUrl changes it). */
+export type NewSource = (
   | { kind: "m3u_url"; name: string; url: string }
   | { kind: "m3u_file"; name: string; path: string }
-  | { kind: "xtream"; name: string; server: string; username: string; password: string };
+  | { kind: "xtream"; name: string; server: string; username: string; password: string }
+) & { guideUrl?: string };
 
 export interface PlayerInfo {
   id: string;
@@ -116,6 +149,17 @@ export interface Backend {
   /** Opens the channel in the chosen player and records it in the history. */
   play(channelId: string): Promise<void>;
   clearHistory(): Promise<void>;
+  /** Downloads the list's guide and matches it to its channels. */
+  refreshGuide(sourceId: string): Promise<SourceInfo>;
+  /** "" goes back to the panel's or the list's own guide. */
+  setGuideUrl(sourceId: string, url: string): Promise<SourceInfo>;
+  /** What is on now and next, for up to 300 channels; channels without a guide are left out. */
+  nowNext(channelIds: string[]): Promise<Record<string, NowNext>>;
+  /** The channel's programmes from the one on air onwards. */
+  channelGuide(channelId: string): Promise<Programme[]>;
+  /** Adds (on) or removes a reminder; resolves to the upcoming reminders. */
+  setReminder(reminder: Reminder, on: boolean): Promise<Reminder[]>;
+  listReminders(): Promise<Reminder[]>;
   /** Accent colour per logo URL ("#rrggbb", or "" when unusable). Max 64 per call. */
   logoColors(urls: string[]): Promise<Record<string, string>>;
   getSettings(): Promise<AppSettings>;

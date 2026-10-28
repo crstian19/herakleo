@@ -76,6 +76,20 @@ export function date(unix: number): string {
   return new Date(unix * 1000).toLocaleDateString(state.locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Hours and minutes in the UI language ("18:30", "6:30 PM"). */
+export function clockTime(unix: number): string {
+  return new Date(unix * 1000).toLocaleTimeString(state.locale, { hour: "2-digit", minute: "2-digit" });
+}
+
+/** "Today", "Tomorrow", or the weekday and date, for a guide's day headings. */
+export function dayLabel(unix: number, nowMs = Date.now()): string {
+  const day = (ms: number) => new Date(ms).toDateString();
+  const when = unix * 1000;
+  if (day(when) === day(nowMs)) return t("guide.today");
+  if (day(when) === day(nowMs + 86_400_000)) return t("guide.tomorrow");
+  return new Date(when).toLocaleDateString(state.locale, { weekday: "long", day: "numeric", month: "short" });
+}
+
 /** "5 minutes ago"-style text for recent times, a date for older ones. */
 export function ago(unix: number): string {
   const secs = Date.now() / 1000 - unix;

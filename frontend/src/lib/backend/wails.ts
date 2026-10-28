@@ -29,6 +29,13 @@ export const backend: Backend = {
   listHiddenGroups: () => app().ListHiddenGroups(),
   play: (channelId) => app().Play(channelId),
   clearHistory: () => app().ClearHistory(),
+  refreshGuide: (id) => app().RefreshGuide(id),
+  setGuideUrl: (id, url) => app().SetGuideURL(id, url),
+  nowNext: (ids) => app().NowNext(ids),
+  // Go sends nil slices as null.
+  channelGuide: async (id) => (await app().ChannelGuide(id)) ?? [],
+  setReminder: async (r, on) => (await app().SetReminder(r, on)) ?? [],
+  listReminders: async () => (await app().ListReminders()) ?? [],
   logoColors: (urls) => app().LogoColors(urls),
   getSettings: () => app().GetSettings(),
   updateSettings: (patch) => app().UpdateSettings(patch),

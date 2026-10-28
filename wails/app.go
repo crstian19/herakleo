@@ -71,6 +71,28 @@ func (a *App) ListHiddenGroups() []string { return a.lib.HiddenGroups() }
 
 func (a *App) ClearHistory() error { return a.lib.ClearHistory() }
 
+func (a *App) RefreshGuide(ctx context.Context, id string) (library.SourceInfo, error) {
+	return a.lib.RefreshGuide(ctx, id)
+}
+
+func (a *App) SetGuideURL(id, url string) (library.SourceInfo, error) {
+	return a.lib.SetGuideURL(id, url)
+}
+
+func (a *App) NowNext(channelIDs []string) map[string]library.NowNext {
+	return a.lib.NowNext(channelIDs)
+}
+
+func (a *App) ChannelGuide(channelID string) []library.Programme {
+	return a.lib.ChannelGuide(channelID)
+}
+
+func (a *App) SetReminder(r library.Reminder, on bool) ([]library.Reminder, error) {
+	return a.lib.SetReminder(r, on)
+}
+
+func (a *App) ListReminders() []library.Reminder { return a.lib.Reminders() }
+
 // Play opens the channel and records it in the history; a failed history
 // write must not stop playback that already started.
 func (a *App) Play(channelID string) error {
@@ -204,7 +226,6 @@ var quitApp = func() { application.Get().Quit() }
 
 // BenchMode is "" outside a benchmark run, otherwise HERAKLEO_BENCH_MODE
 // ("full" by default; "wheel[:variant]" for scripts/profile-scroll.sh).
-// Same contract as bench_mode in lib.rs.
 func (a *App) BenchMode() string {
 	if os.Getenv(benchEnv) == "" {
 		return ""
@@ -215,8 +236,7 @@ func (a *App) BenchMode() string {
 	return "full"
 }
 
-// BenchReport writes the frontend's measurements and quits. Same contract as
-// bench_report in lib.rs.
+// BenchReport writes the frontend's measurements and quits.
 func (a *App) BenchReport(report string) error {
 	path := os.Getenv(benchEnv)
 	if path == "" {
@@ -237,7 +257,6 @@ func (a *App) BenchReport(report string) error {
 // Diagnostics describes the machine for the in-app performance report
 // (Settings → Performance), so a tester can send it without a terminal.
 // Only display/renderer environment variables are included: never secrets.
-// Same contract as diagnostics in lib.rs.
 func (a *App) Diagnostics() map[string]string {
 	out := map[string]string{
 		"webview": "webkitgtk-6.0 (GTK 4, Wails v3)",
