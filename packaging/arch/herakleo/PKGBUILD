@@ -43,7 +43,8 @@ sha256sums=('SKIP')
 
 _goenv() {
   export GOPATH="$srcdir/gopath"
-  export GOFLAGS='-buildmode=pie -trimpath -modcacherw'
+  # -buildvcs=false: the source may sit inside another user's git checkout (CI).
+  export GOFLAGS='-buildmode=pie -trimpath -modcacherw -buildvcs=false'
   export CGO_ENABLED=1
   export CGO_CPPFLAGS="$CPPFLAGS"
   export CGO_CFLAGS="$CFLAGS -Wno-deprecated-declarations"
