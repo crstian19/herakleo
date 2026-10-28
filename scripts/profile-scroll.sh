@@ -28,7 +28,7 @@ export YDOTOOL_SOCKET=${YDOTOOL_SOCKET:-/run/user/$(id -u)/.ydotool_socket}
 
 case "$app" in
   tauri) bin="$root/tauri/src-tauri/target/release/herakleo-tauri" class="herakleo-tauri" ;;
-  wails) bin="$root/wails/build/bin/herakleo-wails" class="me.crstian.herakleo-wails" ;;
+  wails) bin="$root/wails/build/bin/herakleo" class="me.crstian.Herakleo" ;;
   *) echo "app must be tauri or wails" >&2; exit 1 ;;
 esac
 [ -x "$bin" ] || { echo "missing $bin (run: just build)" >&2; exit 1; }

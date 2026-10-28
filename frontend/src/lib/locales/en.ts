@@ -9,6 +9,8 @@ const en: Messages = {
   "nav.noActiveLists": "No active lists.",
   "nav.groups": "Groups",
   "nav.noGroupName": "No group",
+  "nav.filterGroups": "Filter groups…",
+  "nav.noGroupsMatch": "No groups match.",
   "nav.hideGroup": "Hide group",
   "nav.hideGroupNamed": "Hide group {name}",
   "nav.settings": "Settings",
@@ -66,6 +68,7 @@ const en: Messages = {
   "shortcuts.searchToGrid": "From search to the channels",
   "shortcuts.gridToSidebar": "From the first column to the menu",
   "shortcuts.sidebarToGrid": "From the menu to the channels",
+  "shortcuts.groupFilterToList": "From the group filter to the groups",
   "nav.openMenu": "Open menu",
   "nav.closeMenu": "Close menu",
 
@@ -92,6 +95,7 @@ const en: Messages = {
   "empty.noResults": "No results.",
 
   "toast.playing": "Playing {name} in {player}",
+  "toast.effectsAutoOff": "Scrolling was slow, so visual effects are off · turn them back on in Settings → Appearance",
   "toast.thePlayer": "the player",
   "toast.channelHidden": "{name} hidden · bring it back in Settings → Hidden",
   "toast.channelShown": "{name} is visible again",

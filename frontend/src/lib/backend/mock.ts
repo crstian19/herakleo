@@ -1,7 +1,15 @@
 import type { AppSettings, Backend, Channel, SourceInfo } from "../types";
 
 // In-memory backend for working on the UI in a plain browser (`bun run dev:mock`).
-const groups = ["News", "Sports", "Movies", "Kids", "Music", "Documentaries"];
+// Enough groups to exercise the sidebar filter; real lists often have hundreds.
+const groups = [
+  "News", "Sports", "Movies", "Kids", "Music", "Documentaries",
+  "ES | Noticias", "ES | Deportes", "ES | Cine", "ES | Series", "ES | Infantil", "ES | Música",
+  "UK | News", "UK | Sport", "UK | Entertainment", "FR | Actualités", "FR | Sport", "FR | Cinéma",
+  "DE | Nachrichten", "DE | Sport", "DE | Filme", "IT | Notizie", "IT | Sport", "IT | Cinema",
+  "PT | Notícias", "PT | Desporto", "LaLiga", "Premier League", "Champions League", "Formula 1",
+  "Tennis", "Golf", "Nature", "History", "Cooking", "Travel", "Religion", "Shopping", "Radio", "4K UHD",
+];
 const names = [
   "La 1", "La 2", "Antena 3", "Cuatro", "Telecinco", "laSexta", "24h", "Teledeporte",
   "Clan", "Boing", "Paramount", "Cosmo", "AXN", "TNT", "Calle 13", "Discovery",
@@ -11,7 +19,7 @@ const names = [
 
 const now = Math.floor(Date.now() / 1000);
 // `?channels=5000` in the URL fakes a big list (e.g. to exercise the virtualised grid).
-const count = Number(new URLSearchParams(globalThis.location?.search ?? "").get("channels")) || names.length;
+const count = Number(new URLSearchParams(globalThis.location?.search ?? "").get("channels")) || groups.length * 3;
 const channelName = (i: number) => (i < names.length ? names[i]! : `${names[i % names.length]} ${Math.floor(i / names.length) + 1}`);
 
 const sources: SourceInfo[] = [
@@ -58,12 +66,12 @@ const settings: AppSettings = {
   cacheSecs: 0,
   volume: 0,
   cacheChoices: [0, 10, 30, 60, 120],
+  dataDir: "~/.config/herakleo",
   players: [
     { id: "mpv", name: "mpv", installed: true, options: ["softwareDecoding", "cacheSecs", "volume"] },
     { id: "vlc", name: "VLC", installed: true, options: ["softwareDecoding", "cacheSecs"] },
     { id: "celluloid", name: "Celluloid", installed: false, options: [] },
     { id: "haruna", name: "Haruna", installed: false, options: [] },
-    { id: "smplayer", name: "SMPlayer", installed: false, options: [] },
   ],
 };
 

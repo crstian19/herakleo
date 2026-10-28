@@ -39,7 +39,7 @@ bundle-tauri:
 
 build-wails:
     cd frontend && bun install && bun run build:wails
-    cd wails && {{ wails_build }} -o build/bin/herakleo-wails .
+    cd wails && {{ wails_build }} -o build/bin/herakleo .
 
 build: build-wails
 
@@ -48,10 +48,12 @@ test:
     cd frontend && bun run build:wails
     cd wails && go test ./...
 
+# svelte-check, then wails/.golangci.yml (govet included) and its formatters
 lint:
     cd frontend && bun run check
     cd frontend && bun run build:wails
-    cd wails && go vet ./...
+    cd wails && CGO_CFLAGS=-Wno-deprecated-declarations golangci-lint run ./...
+    cd wails && golangci-lint fmt --diff
 
 # Clean release builds of both, then binary size and build time side by side
 compare:
@@ -62,7 +64,7 @@ compare:
     (cd wails && go clean -cache >/dev/null && just build-wails >/dev/null 2>&1); t2=$(date +%s)
     printf "%-8s %10s %12s\n" app binary "clean build"
     printf "%-8s %10s %11ss\n" tauri "$(du -h tauri/src-tauri/target/release/herakleo-tauri | cut -f1)" $((t1 - t0))
-    printf "%-8s %10s %11ss\n" wails "$(du -h wails/build/bin/herakleo-wails | cut -f1)" $((t2 - t1))
+    printf "%-8s %10s %11ss\n" wails "$(du -h wails/build/bin/herakleo | cut -f1)" $((t2 - t1))
 
 # Start one app (tauri|wails), wait, and sum RSS of it plus its WebKit helpers
 mem app="tauri" secs="5":
@@ -70,7 +72,7 @@ mem app="tauri" secs="5":
     set -euo pipefail
     case "{{ app }}" in
       tauri) bin=tauri/src-tauri/target/release/herakleo-tauri ;;
-      wails) bin=wails/build/bin/herakleo-wails ;;
+      wails) bin=wails/build/bin/herakleo ;;
       *) echo "app must be tauri or wails"; exit 1 ;;
     esac
     "$bin" >/dev/null 2>&1 & pid=$!
@@ -81,13 +83,13 @@ mem app="tauri" secs="5":
     kill "$pid"
 
 # Tars the working tree (uncommitted changes included) and runs makepkg in each
-# PKGBUILD dir. No -s: install the makedepends yourself (cargo, go, bun,
-# nodejs, pkgconf, imagemagick).
-# Arch package (packaging/arch). The deprecated Tauri one: `just package-arch tauri`
-package-arch flavours="wails":
+# PKGBUILD dir. No -s: install the makedepends yourself (go, bun, nodejs,
+# pkgconf; cargo too for Tauri).
+# Arch package (packaging/arch). The deprecated Tauri one: `just package-arch herakleo-tauri`
+package-arch pkgs="herakleo":
     #!/usr/bin/env bash
     set -euo pipefail
-    ver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo-wails/PKGBUILD)
+    ver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo/PKGBUILD)
     tarball="packaging/arch/herakleo-$ver.tar.gz"
     # Only what git would publish (tracked + untracked, minus .gitignore), so
     # local-only files like profiles/ (sysprof captures hold the environment)
@@ -95,11 +97,31 @@ package-arch flavours="wails":
     git ls-files -z --cached --others --exclude-standard \
       | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
       | tar -czf "$tarball" --null -T - --transform "s,^,herakleo-$ver/,"
-    for flavour in {{ flavours }}; do
-      cp "$tarball" "packaging/arch/herakleo-$flavour/"
-      (cd "packaging/arch/herakleo-$flavour" && makepkg -f --noconfirm)
+    for pkg in {{ pkgs }}; do
+      cp "$tarball" "packaging/arch/$pkg/"
+      (cd "packaging/arch/$pkg" && makepkg -f --noconfirm)
     done
-    for flavour in {{ flavours }}; do ls -1 "$PWD"/packaging/arch/herakleo-$flavour/herakleo-*.pkg.tar.zst; done
+    for pkg in {{ pkgs }}; do ls -1 "$PWD"/packaging/arch/$pkg/$pkg-*.pkg.tar.zst; done
+
+# The release workflow refuses tags whose version differs from these files.
+# Set the release version (Arch pkgver, AppStream entry, CHANGELOG); then commit and tag
+bump version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    v="{{ version }}"
+    [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must be x.y.z"; exit 1; }
+    sed -i "s/^pkgver=.*/pkgver=$v/; s/^pkgrel=.*/pkgrel=1/" packaging/arch/herakleo/PKGBUILD
+    meta=packaging/linux/me.crstian.Herakleo.metainfo.xml
+    grep -q "<release version=\"$v\"" "$meta" \
+      || sed -i "s|  <releases>|  <releases>\n    <release version=\"$v\" date=\"$(date +%F)\"/>|" "$meta"
+    # Unreleased becomes the new version; a fresh empty Unreleased goes on top.
+    if ! grep -q "^## \[$v\]" CHANGELOG.md; then
+      prev=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
+      sed -i "s|^## \[Unreleased\]|## [Unreleased]\n\n## [$v] - $(date +%F)|" CHANGELOG.md
+      sed -i "s|^\[Unreleased\]: .*|[Unreleased]: https://github.com/crstian19/herakleo/compare/v$v...HEAD\n[$v]: https://github.com/crstian19/herakleo/compare/v$prev...v$v|" CHANGELOG.md
+    fi
+    git diff --stat
+    echo "Next: git commit -am 'chore: release v$v' && git tag v$v && git push --follow-tags"
 
 # End-to-end benchmark of both release builds on a copy of a library
 # (window time, first page, in-webview API round-trips, peak RSS)

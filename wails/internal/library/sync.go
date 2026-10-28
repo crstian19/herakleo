@@ -66,7 +66,7 @@ func (l *Library) reloadLocked() error {
 			continue
 		}
 		var chs []channel
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // channelsPath of a validated source ID
 		if err == nil {
 			err = json.Unmarshal(data, &chs)
 		}

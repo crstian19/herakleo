@@ -5,12 +5,13 @@ pre-commit:
       run: gitleaks protect --staged --redact
     go-fmt:
       glob: "wails/**/*.go"
-      run: test -z "$(gofmt -l {staged_files})"
-    go-vet:
+      root: "wails/"
+      run: golangci-lint fmt --diff
+    go-lint:
       glob: "wails/**/*.go"
       root: "wails/"
       # go:embed needs frontend/dist to exist before Go compiles.
-      run: (cd ../frontend && bun run build:wails >/dev/null) && go vet ./...
+      run: (cd ../frontend && bun run build:wails >/dev/null) && CGO_CFLAGS=-Wno-deprecated-declarations golangci-lint run ./...
     rust-fmt:
       glob: "tauri/src-tauri/**/*.rs"
       root: "tauri/src-tauri/"

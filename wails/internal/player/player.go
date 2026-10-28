@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -53,8 +54,9 @@ func (o Options) Validate() error {
 }
 
 // known is a fixed allowlist on purpose: letting the UI send an arbitrary
-// command would turn any webview bug into code execution. Mirrors player.rs.
-// Celluloid, Haruna and SMPlayer get only the playlist: they have no stable
+// command would turn any webview bug into code execution. SMPlayer is left
+// out: it starts its own mpv with the stream URL in argv.
+// Celluloid, Haruna and IINA get only the playlist: they have no stable
 // CLI flags for these options, and passing mpv options through them is
 // exactly the kind of string building the allowlist exists to avoid.
 //
@@ -63,17 +65,21 @@ func (o Options) Validate() error {
 // playlist file instead (see playlist.go).
 var known = []struct {
 	id, name, bin string
-	options       []string
-	args          func(l launch, o Options) []string
+	// GOOS values the player exists on; empty means everywhere.
+	goos    []string
+	options []string
+	args    func(l launch, o Options) []string
 }{
-	{"mpv", "mpv", "mpv", []string{OptSoftwareDecoding, OptCacheSecs, OptVolume}, func(l launch, o Options) []string {
-		args := []string{"--force-window=immediate", "--really-quiet",
+	{"mpv", "mpv", "mpv", nil, []string{OptSoftwareDecoding, OptCacheSecs, OptVolume}, func(l launch, o Options) []string {
+		args := []string{
+			"--force-window=immediate", "--really-quiet",
 			// "$$" stops mpv expanding ${path} in a hostile channel name into
 			// the window title, which would show the password-bearing URL.
 			"--title=" + strings.ReplaceAll(l.title, "$", "$$"),
 			// IPTV never needs yt-dlp, and on a failed open the hook would
 			// hand the provider URL to yt-dlp's generic extractor.
-			"--ytdl=no"}
+			"--ytdl=no",
+		}
 		if o.SoftwareDecoding {
 			args = append(args, "--hwdec=no")
 		} else {
@@ -94,7 +100,7 @@ var known = []struct {
 	}},
 	// The #EXTINF line names the item: VLC's --meta-title would only label
 	// the playlist node, not the stream it expands to.
-	{"vlc", "VLC", "vlc", []string{OptSoftwareDecoding, OptCacheSecs}, func(l launch, o Options) []string {
+	{"vlc", "VLC", "vlc", nil, []string{OptSoftwareDecoding, OptCacheSecs}, func(l launch, o Options) []string {
 		var args []string
 		if o.SoftwareDecoding {
 			args = append(args, "--avcodec-hw=none")
@@ -104,7 +110,7 @@ var known = []struct {
 		}
 		return append(args, l.list)
 	}},
-	{"celluloid", "Celluloid", "celluloid", nil, func(l launch, _ Options) []string {
+	{"celluloid", "Celluloid", "celluloid", []string{"linux"}, nil, func(l launch, _ Options) []string {
 		// Celluloid is libmpv, so it has mpv's udp-from-playlist refusal; a
 		// fixed flag, not a pass-through of anything the UI sends.
 		if l.unsafeScheme {
@@ -112,8 +118,19 @@ var known = []struct {
 		}
 		return []string{l.list}
 	}},
-	{"haruna", "Haruna", "haruna", nil, func(l launch, _ Options) []string { return []string{l.list} }},
-	{"smplayer", "SMPlayer", "smplayer", nil, func(l launch, _ Options) []string { return []string{l.list} }},
+	{"haruna", "Haruna", "haruna", []string{"linux"}, nil, func(l launch, _ Options) []string { return []string{l.list} }},
+	{"iina", "IINA", "iina", []string{"darwin"}, nil, func(l launch, _ Options) []string {
+		// IINA is libmpv too and forwards --mpv-* options to it.
+		if l.unsafeScheme {
+			return []string{"--mpv-load-unsafe-playlists=yes", l.list}
+		}
+		return []string{l.list}
+	}},
+}
+
+// onThisOS reports whether a known player is offered on this platform.
+func onThisOS(goos []string) bool {
+	return len(goos) == 0 || slices.Contains(goos, runtime.GOOS)
 }
 
 // launch is what a player is started with: never the stream URL itself.
@@ -139,7 +156,10 @@ type Info struct {
 func Available() []Info {
 	out := make([]Info, 0, len(known))
 	for _, p := range known {
-		_, err := exec.LookPath(p.bin)
+		if !onThisOS(p.goos) {
+			continue
+		}
+		_, err := findPlayer(p.id, p.bin)
 		out = append(out, Info{ID: p.id, Name: p.name, Installed: err == nil, Options: append([]string{}, p.options...)})
 	}
 	return out
@@ -148,11 +168,26 @@ func Available() []Info {
 // Known reports whether id is a supported player.
 func Known(id string) bool {
 	for _, p := range known {
-		if p.id == id {
+		if p.id == id && onThisOS(p.goos) {
 			return true
 		}
 	}
 	return false
+}
+
+// lookPathOr finds bin on PATH, then at the given absolute paths. Apps
+// started from a desktop shortcut on macOS or Windows rarely have the
+// player's install directory on PATH.
+func lookPathOr(bin string, paths []string) (string, error) {
+	if p, err := exec.LookPath(bin); err == nil {
+		return p, nil
+	}
+	for _, p := range paths {
+		if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() {
+			return p, nil
+		}
+	}
+	return "", exec.ErrNotFound
 }
 
 // Player keeps a single instance: starting a channel replaces the previous one.
@@ -173,7 +208,7 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 	}
 	idx := -1
 	for i, p := range known {
-		if p.id == playerID {
+		if p.id == playerID && onThisOS(p.goos) {
 			idx = i
 		}
 	}
@@ -181,7 +216,7 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 		return fmt.Errorf("unknown_player: %s", playerID)
 	}
 	p := known[idx]
-	bin, err := exec.LookPath(p.bin)
+	bin, err := findPlayer(p.id, p.bin)
 	if err != nil {
 		return fmt.Errorf("player_missing: %s", p.name)
 	}
@@ -189,12 +224,12 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 	title = displayTitle(title, streamURL)
 	dir, err := playlistDir()
 	if err != nil {
-		return fmt.Errorf("player_launch_failed: %v", err)
+		return fmt.Errorf("player_launch_failed: %w", err)
 	}
 	removeStale(dir, time.Now().Add(-staleAfter))
 	list, err := writePlaylist(dir, title, streamURL)
 	if err != nil {
-		return fmt.Errorf("player_launch_failed: %v", err)
+		return fmt.Errorf("player_launch_failed: %w", err)
 	}
 	l := launch{title: title, list: list, unsafeScheme: needsUnsafePlaylist(streamURL)}
 
@@ -202,7 +237,7 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 	defer m.mu.Unlock()
 	m.stopLocked()
 
-	cmd := exec.Command(bin, p.args(l, o)...)
+	cmd := playerCommand(bin, p.args(l, o))
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(list)
 		return err
@@ -226,7 +261,7 @@ func (m *Player) Stop() {
 
 func (m *Player) stopLocked() {
 	if m.cmd != nil && m.cmd.Process != nil {
-		_ = m.cmd.Process.Kill()
+		stopProcess(m.cmd.Process)
 	}
 	// Removed here as well because on app exit the Wait goroutine may not
 	// get to run.

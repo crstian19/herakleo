@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+
+      - name: Install GTK 4 and WebKitGTK 6
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          bun install --frozen-lockfile
+          bun run check
+          bun run build:wails
+
+      # The linter set from wails/.golangci.yml (govet included). Pinned so a
+      # new release cannot turn CI red on its own; Renovate bumps it.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9.3.0
+        env:
+          CGO_CFLAGS: -Wno-deprecated-declarations
+        with:
+          version: v2.15.0
+          working-directory: wails
+          args: --timeout=5m
+
+      # `golangci-lint fmt` would rewrite files and pass; --diff fails instead.
+      - name: Go format
+        working-directory: wails
+        run: golangci-lint fmt --diff
+
+      - name: Go test
+        working-directory: wails
+        env:
+          CGO_CFLAGS: -Wno-deprecated-declarations
+        run: go test -race ./...
+
+      # Windows needs no cgo, so it is checked from Linux. macOS needs its own
+      # runner, which costs 10x the minutes on a private repo: the release
+      # workflow builds it (run it by hand to try a change).
+      - name: Windows build
+        working-directory: wails
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          go vet -tags production ./...
+          go test -c -o /dev/null ./internal/player
+          go build -tags production -o /dev/null .

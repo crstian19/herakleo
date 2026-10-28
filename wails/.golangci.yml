@@ -1,0 +1,66 @@
+version: "2"
+
+# Same set as aceplay. errcheck, govet, ineffassign, staticcheck and unused
+# are on by default in v2; everything below is added on top. Linted on Linux
+# (CI), so platform_{darwin,windows}.go are only vetted by the Windows build
+# step and the macOS release job.
+run:
+  build-tags:
+    - production
+
+linters:
+  enable:
+    # Correctness
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - nilerr
+    - noctx
+    # Security
+    - gosec
+    # Style and simplification
+    - gocritic
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+    # Performance
+    - prealloc
+
+  settings:
+    gosec:
+      excludes:
+        # Starting the chosen media player is the point of internal/player; the
+        # binary comes from a fixed allowlist, never from the UI.
+        - G204
+
+  exclusions:
+    rules:
+      # Doc comments inside internal/ would just restate the name.
+      - path: internal/
+        text: should have comment or be unexported
+        linters:
+          - revive
+      # Players are meant to outlive the call that starts them, so there is
+      # no context to tie them to.
+      - path: internal/player/
+        linters:
+          - noctx
+      # Tests build fixtures and probe local servers on purpose.
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
+          - noctx
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/crstian19/herakleo)

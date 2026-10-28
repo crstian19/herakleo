@@ -23,11 +23,15 @@ const (
 // playlistDir returns a private directory for playlist files, creating it
 // if needed. XDG_RUNTIME_DIR is already per-user, 0700 and tmpfs; the shared
 // temp dir fallback gets a per-uid name and an owner check, so another user
-// cannot pre-create it and read the files.
+// cannot pre-create it and read the files. Windows has no uid (-1) and a
+// per-user %TEMP%.
 func playlistDir() (string, error) {
-	base, name := os.Getenv("XDG_RUNTIME_DIR"), "herakleo"
+	base, name := runtimeDir(), "herakleo"
 	if !filepath.IsAbs(base) {
-		base, name = os.TempDir(), "herakleo-"+strconv.Itoa(os.Getuid())
+		base = os.TempDir()
+		if uid := os.Getuid(); uid >= 0 {
+			name += "-" + strconv.Itoa(uid)
+		}
 	}
 	dir := filepath.Join(base, name)
 	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
@@ -42,7 +46,7 @@ func playlistDir() (string, error) {
 		return "", fmt.Errorf("%s is not a directory owned by this user", dir)
 	}
 	if fi.Mode().Perm() != 0o700 {
-		if err := os.Chmod(dir, 0o700); err != nil {
+		if err := os.Chmod(dir, 0o700); err != nil { //nolint:gosec // a directory needs the x bit
 			return "", err
 		}
 	}

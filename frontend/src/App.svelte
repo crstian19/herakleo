@@ -14,7 +14,8 @@
   } from "./lib/api";
   import ChannelCard from "./lib/ChannelCard.svelte";
   import { num, t } from "./lib/i18n.svelte";
-  import { prefs, savePrefs } from "./lib/prefs.svelte";
+  import { prefs, savePrefs, setEffects } from "./lib/prefs.svelte";
+  import { watchSlowScroll } from "./lib/slowscroll";
   import Settings from "./lib/Settings.svelte";
   import { gridMove, isTyping } from "./lib/shortcuts";
   import ShortcutsHelp from "./lib/ShortcutsHelp.svelte";
@@ -43,6 +44,15 @@
   let listView = $state<ChannelView>("");
   let searchInput = $state("");
   let search = $state("");
+  // Sidebar group filter. Matches like the channel search in the backend:
+  // trimmed, case-insensitive substring. Names are lower-cased once per load,
+  // not per keystroke; hundreds of groups need no debounce.
+  let groupQuery = $state("");
+  const groupKeys = $derived(groups.map((g) => g.name.toLowerCase()));
+  const shownGroups = $derived.by(() => {
+    const needle = groupQuery.trim().toLowerCase();
+    return needle ? groups.filter((_, i) => groupKeys[i]!.includes(needle)) : groups;
+  });
 
   let loading = $state(false);
   let refreshing = $state("");
@@ -71,6 +81,7 @@
   let scroller = $state<HTMLElement>();
   let sidebar = $state<HTMLElement>();
   let searchEl = $state<HTMLInputElement>();
+  let groupSearchEl = $state<HTMLInputElement>();
   let helpOpen = $state(false);
   // The "open project, support it" popup: never on first launch. It shows on
   // the SUPPORT_AFTER-th channel played (the app has proved useful by then),
@@ -105,8 +116,16 @@
   // pointer (app.css .is-scrolling) so hover effects don't churn.
   let scrolling = $state(false);
   let scrollIdle: ReturnType<typeof setTimeout> | undefined;
+  // Only while the effects are on and the user never picked them by hand;
+  // the performance meter is left to measure undisturbed.
+  const slowScroll = watchSlowScroll(() => {
+    if (!prefs.effects || prefs.effectsChosen || perf === "measuring") return;
+    setEffects(false, false);
+    notify(t("toast.effectsAutoOff"), false, 8000);
+  });
   function markScrolling() {
     scheduleWindow();
+    if (prefs.effects && !prefs.effectsChosen && perf !== "measuring") slowScroll();
     if (!scrolling) perfEvent("hover-off");
     scrolling = true;
     clearTimeout(scrollIdle);
@@ -133,10 +152,10 @@
         : group || (sources.find((s) => s.id === sourceId)?.name ?? viewTitle("")),
   );
 
-  function notify(text: string, error = false) {
+  function notify(text: string, error = false, ms = error ? 6000 : 2500) {
     toast = { text, error };
     const current = toast;
-    setTimeout(() => toast === current && (toast = null), error ? 6000 : 2500);
+    setTimeout(() => toast === current && (toast = null), ms);
   }
 
   async function loadSources() {
@@ -584,18 +603,49 @@
     return true;
   }
 
-  /** The sidebar entries arrows can walk, in order (only visible ones). */
-  const sidebarItems = () => [...(sidebar?.querySelectorAll<HTMLElement>("button.chip") ?? [])].filter((b) => b.offsetParent);
+  /** The sidebar entries arrows can walk, in order (only visible ones). The group filter is one of them. */
+  const sidebarItems = () =>
+    [...(sidebar?.querySelectorAll<HTMLElement>("button.chip, input[data-group-filter]") ?? [])].filter((b) => b.offsetParent);
 
-  async function focusSidebar(selector = "button.chip.is-active") {
+  /** Focuses the first sidebar element matching one of the selectors, tried in order. */
+  async function focusSidebar(...selectors: string[]) {
     if (window.matchMedia("(max-width: 1023px)").matches) navOpen = true;
     await tick();
-    (sidebar?.querySelector<HTMLElement>(selector) ?? sidebarItems()[0])?.focus();
+    const found = (selectors.length ? selectors : ["button.chip.is-active"])
+      .map((s) => sidebar?.querySelector<HTMLElement>(s))
+      .find(Boolean);
+    (found ?? sidebarItems()[0])?.focus();
+  }
+
+  // The active group may be filtered out: then the first match, then the filter itself.
+  const focusGroups = () =>
+    focusSidebar('[data-nav="groups"] button.chip.is-active', '[data-nav="groups"] button.chip', "input[data-group-filter]");
+
+  /** Arrows and Enter inside the group filter; Esc goes through back(). */
+  function onGroupFilterKey(e: KeyboardEvent): boolean {
+    if (e.key === "ArrowDown") {
+      sidebar?.querySelector<HTMLElement>('[data-nav="groups"] button.chip')?.focus();
+      return true;
+    }
+    if (e.key === "ArrowUp") {
+      const items = sidebarItems();
+      items[items.indexOf(groupSearchEl!) - 1]?.focus();
+      return true;
+    }
+    // Enter picks the first match, so a remote needs no extra key presses.
+    if (e.key === "Enter" && groupQuery.trim() && shownGroups[0]) {
+      selectGroup(shownGroups[0].name);
+      return true;
+    }
+    return false;
   }
 
   /** One step back, from the most local state to the widest. */
   function back(target: EventTarget | null) {
-    if (navOpen) navOpen = false;
+    // Before closing the drawer: the filter lives inside it.
+    if (target === groupSearchEl && groupQuery) groupQuery = "";
+    else if (target === groupSearchEl) focusGroups();
+    else if (navOpen) navOpen = false;
     else if (target === searchEl && searchInput) searchInput = "";
     else if (target === searchEl) searchEl?.blur();
     else if (view === "settings") view = "channels";
@@ -630,6 +680,7 @@
     }
     if (typing) {
       if (target === searchEl && e.key === "ArrowDown" && focusCard(0)) e.preventDefault();
+      if (target === groupSearchEl && onGroupFilterKey(e)) e.preventDefault();
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -653,7 +704,7 @@
           return show({ listView: "history" });
         case "g":
         case "G":
-          return void focusSidebar('[data-nav="groups"] button.chip.is-active');
+          return void focusGroups();
         case ",":
           view = "settings";
           return;
@@ -770,9 +821,25 @@
       {#if groups.length > 0 && view === "channels" && (listView === "" || listView === "favorites")}
         <section data-nav="groups">
           <h2 class="section-title mb-2">{t("nav.groups")}</h2>
+          <!-- Same look as the channel search in the header -->
+          <div class="relative mb-2">
+            <svg class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              ><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg
+            >
+            <input
+              bind:this={groupSearchEl}
+              data-group-filter
+              class="field pl-9"
+              type="search"
+              placeholder={t("nav.filterGroups")}
+              aria-label={t("nav.filterGroups")}
+              bind:value={groupQuery}
+            />
+          </div>
           <div class="space-y-0.5">
-            {@render navItem(t("nav.all"), !group, () => selectGroup(""))}
-            {#each groups as g (g.name)}
+            <!-- "All" is not a match: hidden while filtering, so ↓ lands on the first result -->
+            {#if !groupQuery.trim()}{@render navItem(t("nav.all"), !group, () => selectGroup(""))}{/if}
+            {#each shownGroups as g (g.name)}
               <div class="group/g relative">
                 <button class="chip pr-9 lg:pr-3 lg:group-hover/g:pr-9" class:is-active={group === g.name} onclick={() => selectGroup(g.name)}>
                   <span class="flex-1 truncate">{g.name || t("nav.noGroupName")}</span>
@@ -790,6 +857,8 @@
                   >
                 </button>
               </div>
+            {:else}
+              <p class="px-3 py-1 text-xs text-muted">{t("nav.noGroupsMatch")}</p>
             {/each}
           </div>
         </section>

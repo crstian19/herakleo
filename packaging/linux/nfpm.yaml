@@ -1,0 +1,56 @@
+# .deb and .rpm, built by the release workflow from a binary compiled on
+# Ubuntu 24.04. Run from the repo root: VERSION=x.y.z nfpm package -p deb -f packaging/linux/nfpm.yaml
+name: herakleo
+arch: amd64
+platform: linux
+version: ${VERSION}
+section: video
+priority: optional
+maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+description: |
+  Desktop IPTV player for M3U lists and Xtream Codes.
+  Plays channels in an external player (mpv, VLC, Celluloid or Haruna).
+vendor: Cristian Gutiérrez
+homepage: https://github.com/crstian19/herakleo
+license: GPL-3.0-or-later
+
+contents:
+  - src: wails/build/bin/herakleo
+    dst: /usr/bin/herakleo
+    file_info: {mode: 0755}
+  - src: packaging/linux/me.crstian.Herakleo.desktop
+    dst: /usr/share/applications/me.crstian.Herakleo.desktop
+  - src: packaging/linux/me.crstian.Herakleo.metainfo.xml
+    dst: /usr/share/metainfo/me.crstian.Herakleo.metainfo.xml
+  - src: packaging/linux/icons/128.png
+    dst: /usr/share/icons/hicolor/128x128/apps/me.crstian.Herakleo.png
+  - src: packaging/linux/icons/256.png
+    dst: /usr/share/icons/hicolor/256x256/apps/me.crstian.Herakleo.png
+  - src: packaging/linux/icons/512.png
+    dst: /usr/share/icons/hicolor/512x512/apps/me.crstian.Herakleo.png
+  - src: LICENSE
+    dst: /usr/share/licenses/herakleo/LICENSE
+
+overrides:
+  deb:
+    # Ubuntu 24.04+, Debian 13+
+    depends:
+      - libgtk-4-1
+      - libwebkitgtk-6.0-4
+    recommends:
+      - mpv
+    suggests:
+      - vlc
+      - celluloid
+      - haruna
+  rpm:
+    # Fedora 39+
+    depends:
+      - gtk4
+      - webkitgtk6.0
+    recommends:
+      - mpv
+    suggests:
+      - vlc
+      - celluloid
+      - haruna

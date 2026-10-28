@@ -21,3 +21,11 @@ assets/*
 !assets/herakleo-wails.png
 video/BRIEF.md
 frontend/package.json.md5
+
+# Release builds (packaging/flatpak, wails/build/windows/nsis, the release workflow)
+.flatpak-builder/
+flatpak-build/
+flatpak-repo/
+*.flatpak
+wails/*.syso
+wails/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe

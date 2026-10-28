@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -23,7 +25,7 @@ type App struct {
 }
 
 // ServiceShutdown runs when the app quits: never leave a player behind.
-func (a *App) ServiceShutdown() error {
+func (a *App) ServiceShutdown() error { //nolint:unparam // Wails' service interface
 	a.player.Stop()
 	return nil
 }
@@ -95,6 +97,8 @@ type SettingsView struct {
 	CacheSecs        int           `json:"cacheSecs"`
 	Volume           int           `json:"volume"`
 	CacheChoices     []int         `json:"cacheChoices"`
+	// Where library.json lives, with the home folder shown as ~ outside Windows.
+	DataDir string `json:"dataDir"`
 }
 
 func (a *App) GetSettings() SettingsView {
@@ -102,7 +106,7 @@ func (a *App) GetSettings() SettingsView {
 	return SettingsView{
 		Player: a.playerID(), Players: player.Available(), RefreshOnStart: s.RefreshOnStart,
 		SoftwareDecoding: s.SoftwareDecoding, CacheSecs: s.CacheSecs, Volume: s.Volume,
-		CacheChoices: player.CacheChoices,
+		CacheChoices: player.CacheChoices, DataDir: displayDir(a.lib.Dir()),
 	}
 }
 
@@ -215,7 +219,8 @@ func (a *App) BenchReport(report string) error {
 	if len(report) > 1<<20 {
 		return errors.New("bench_report_too_large")
 	}
-	if err := os.WriteFile(path, []byte(report), 0o600); err != nil {
+	// The path comes from the environment of the bench script, not the UI.
+	if err := os.WriteFile(path, []byte(report), 0o600); err != nil { //nolint:gosec
 		return err
 	}
 	// Quit from outside this call, so the frontend still gets its answer.
@@ -284,4 +289,12 @@ func (a *App) OpenLink(id string) error {
 		return fmt.Errorf("unknown_link: %s", id)
 	}
 	return openURL(u)
+}
+
+func displayDir(dir string) string {
+	home, err := os.UserHomeDir()
+	if runtime.GOOS == "windows" || err != nil || !strings.HasPrefix(dir, home+string(filepath.Separator)) {
+		return dir
+	}
+	return "~" + dir[len(home):]
 }

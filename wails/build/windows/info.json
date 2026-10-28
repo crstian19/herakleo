@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0409": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "Cristian Gutiérrez",
+			"FileDescription": "Desktop IPTV player for M3U lists and Xtream Codes",
+			"LegalCopyright": "© 2026 Cristian Gutiérrez",
+			"ProductName": "Herakleo",
+			"Comments": "GPL-3.0-or-later"
+		}
+	}
+}

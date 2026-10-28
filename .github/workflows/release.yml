@@ -1,0 +1,309 @@
+name: Release
+
+# A v* tag builds every package and publishes a GitHub release. Running it by
+# hand builds the same packages as workflow artifacts without publishing, to
+# try a packaging change (and the macOS build, which CI skips).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.2"
+  # Wails' own X11 code uses APIs deprecated in GTK 4.
+  CGO_CFLAGS: -Wno-deprecated-declarations
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Tags must match the version in the repo, so the Arch and AppStream
+      # metadata never ship stale. `just bump x.y.z` updates both.
+      - id: v
+        run: |
+          pkgver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo/PKGBUILD)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version=${GITHUB_REF#refs/tags/v}
+            [[ "$version" == "$pkgver" ]] || { echo "::error::tag v$version but PKGBUILD pkgver=$pkgver"; exit 1; }
+            grep -q "<release version=\"$version\"" packaging/linux/me.crstian.Herakleo.metainfo.xml \
+              || { echo "::error::no <release version=\"$version\"> in the metainfo"; exit 1; }
+            grep -q "^## \[$version\]" CHANGELOG.md \
+              || { echo "::error::no ## [$version] section in CHANGELOG.md"; exit 1; }
+          else
+            version=$pkgver
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  ui:
+    name: UI
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - working-directory: frontend
+        run: |
+          bun install --frozen-lockfile
+          bun run build:wails
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ui
+          path: wails/frontend/dist
+          if-no-files-found: error
+
+  linux:
+    name: Linux (tar.gz, deb, rpm)
+    needs: [version, ui]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ui
+          path: wails/frontend/dist
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+
+      # Built on Ubuntu 24.04, the oldest release with webkitgtk-6.0, so the
+      # binary runs on it and anything newer.
+      - name: Install GTK 4 and WebKitGTK 6
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Build
+        working-directory: wails
+        run: go build -tags production -trimpath -ldflags "-s -w" -o build/bin/herakleo .
+
+      - name: Package
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0
+          mkdir -p dist
+          nfpm package -p deb -f packaging/linux/nfpm.yaml -t dist/
+          nfpm package -p rpm -f packaging/linux/nfpm.yaml -t dist/
+          # Plain tarball: other distros, and the source of the AUR -bin package.
+          stage="herakleo-$VERSION-linux-x86_64"
+          mkdir -p "$stage"
+          cp wails/build/bin/herakleo LICENSE packaging/linux/me.crstian.Herakleo.desktop \
+            packaging/linux/me.crstian.Herakleo.metainfo.xml "$stage/"
+          cp -r packaging/linux/icons "$stage/"
+          tar -czf "dist/$stage.tar.gz" "$stage"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  arch:
+    name: Arch Linux
+    needs: version
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Install build tools
+        run: pacman -Syu --noconfirm --needed git go bun nodejs pkgconf webkitgtk-6.0 gtk4 libsoup3
+
+      - uses: actions/checkout@v7
+
+      # Same tarball layout as `just package-arch`, but from the commit only.
+      - name: Build
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          dir=packaging/arch/herakleo
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/; s/^pkgrel=.*/pkgrel=1/" "$dir/PKGBUILD"
+          git archive --format=tar.gz --prefix="herakleo-$VERSION/" -o "$dir/herakleo-$VERSION.tar.gz" HEAD
+          useradd -m builder
+          chown -R builder "$dir"
+          su builder -c "cd $dir && makepkg --noconfirm"
+          mkdir -p dist && cp "$dir"/herakleo-*.pkg.tar.zst dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch
+          path: dist/*
+          if-no-files-found: error
+
+  flatpak:
+    name: Flatpak
+    needs: [version, ui]
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ui
+          path: wails/frontend/dist
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
+        with:
+          bundle: herakleo-${{ needs.version.outputs.version }}-x86_64.flatpak
+          manifest-path: packaging/flatpak/me.crstian.Herakleo.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak
+          path: herakleo-*.flatpak
+          if-no-files-found: error
+
+  windows:
+    name: Windows
+    needs: [version, ui]
+    runs-on: windows-2025
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ui
+          path: wails/frontend/dist
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+
+      - name: Install the Wails CLI
+        working-directory: wails
+        # Same version as go.mod, used only for the icon resource and the
+        # WebView2 bootstrapper.
+        run: go install "github.com/wailsapp/wails/v3/cmd/wails3@$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+
+      - name: Build
+        working-directory: wails
+        run: |
+          sed -i "s/\"0\.1\.0\"/\"$VERSION\"/g" build/windows/info.json
+          wails3 generate syso -arch amd64 -icon build/windows/icon.ico \
+            -manifest build/windows/wails.exe.manifest -info build/windows/info.json \
+            -out wails_windows_amd64.syso
+          go build -tags production -trimpath -ldflags "-s -w -H windowsgui" -o build/bin/herakleo.exe .
+
+      - name: Installer
+        working-directory: wails/build/windows/nsis
+        run: |
+          wails3 generate webview2bootstrapper -dir .
+          command -v makensis || export PATH="$PATH:/c/Program Files (x86)/NSIS"
+          command -v makensis || { choco install nsis -y --no-progress && export PATH="$PATH:/c/Program Files (x86)/NSIS"; }
+          makensis -DARG_WAILS_AMD64_BINARY="$(cygpath -w "$GITHUB_WORKSPACE/wails/build/bin/herakleo.exe")" \
+            -DINFO_PRODUCTVERSION="$VERSION" project.nsi
+
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp wails/build/bin/herakleo-*-setup.exe dist/
+          stage="herakleo-$VERSION-windows-x86_64"
+          mkdir "$stage" && cp wails/build/bin/herakleo.exe LICENSE "$stage/"
+          7z a "dist/$stage.zip" "$stage" > /dev/null
+          ls -la dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS
+    needs: [version, ui]
+    runs-on: macos-15
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ui
+          path: wails/frontend/dist
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+
+      # One .app for Apple Silicon and Intel: the arm64 runner's SDK builds
+      # both slices, lipo joins them.
+      - name: Build
+        working-directory: wails
+        env:
+          CGO_ENABLED: "1"
+          CGO_CFLAGS: -mmacosx-version-min=12.0
+          CGO_LDFLAGS: -mmacosx-version-min=12.0
+        run: |
+          for arch in arm64 amd64; do
+            GOARCH=$arch go build -tags production -trimpath -ldflags "-s -w" -o build/bin/herakleo-$arch .
+          done
+          lipo -create -output build/bin/herakleo build/bin/herakleo-arm64 build/bin/herakleo-amd64
+
+      # Unsigned: an ad-hoc signature is the minimum for Apple Silicon to run
+      # it. Gatekeeper still asks on first launch (see README).
+      - name: Bundle
+        run: |
+          app=dist/Herakleo.app
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp wails/build/bin/herakleo "$app/Contents/MacOS/"
+          cp wails/build/darwin/Info.plist "$app/Contents/"
+          cp wails/build/darwin/icons.icns "$app/Contents/Resources/"
+          plutil -replace CFBundleShortVersionString -string "$VERSION" "$app/Contents/Info.plist"
+          plutil -replace CFBundleVersion -string "$VERSION" "$app/Contents/Info.plist"
+          codesign --force --deep --sign - "$app"
+          ln -s /Applications dist/Applications
+          hdiutil create -volname Herakleo -srcfolder dist -ov -format UDZO "herakleo-$VERSION-macos-universal.dmg"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: herakleo-*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, linux, arch, flatpak, windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # The release text is this version's CHANGELOG.md section.
+      - name: Release notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '/^## \[/ { on = index($0, "## [" v "]") == 1; next } /^\[.*\]: / { on = 0 } on' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: '{linux,arch,flatpak,windows,macos}'
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          body_path: notes.md

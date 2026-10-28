@@ -90,7 +90,8 @@ func ParseM3U(r io.Reader) ([]Entry, error) {
 			pending, hasInfo = Entry{}, false
 		}
 	}
-	return entries, nil
+	// err above is io.EOF here: the end of the list, not a failure.
+	return entries, nil //nolint:nilerr
 }
 
 // parseExtinf parses `-1 tvg-logo="x" group-title="y",Display Name`. The name

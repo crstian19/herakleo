@@ -86,6 +86,8 @@ export interface AppSettings extends PlaybackOptions {
   players: PlayerInfo[];
   refreshOnStart: boolean;
   cacheChoices: number[];
+  /** Absent in the frozen Tauri build. */
+  dataDir?: string;
 }
 
 export interface SettingsPatch extends Partial<PlaybackOptions> {

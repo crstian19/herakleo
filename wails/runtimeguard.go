@@ -115,7 +115,8 @@ func (g *runtimeGuard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func deny(w http.ResponseWriter, r *http.Request, why string) {
-	log.Printf("runtime guard: blocked %s %s: %s", r.Method, r.URL.Path, why)
+	// %q keeps a crafted path on one log line.
+	log.Printf("runtime guard: blocked %q %q: %s", r.Method, r.URL.Path, why) //nolint:gosec
 	http.Error(w, "forbidden", http.StatusForbidden)
 }
 

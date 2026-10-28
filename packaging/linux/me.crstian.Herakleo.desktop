@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Herakleo
+GenericName=IPTV Player
+Comment=Watch M3U lists and Xtream Codes accounts in your video player
+Exec=herakleo
+Icon=me.crstian.Herakleo
+Terminal=false
+Categories=AudioVideo;Video;Player;TV;
+Keywords=iptv;m3u;xtream;tv;channels;
+StartupWMClass=me.crstian.Herakleo

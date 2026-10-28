@@ -84,6 +84,7 @@ export const shortcutGroups: { title: MessageKey; items: Shortcut[] }[] = [
       { keys: ["↓"], label: "shortcuts.searchToGrid" },
       { keys: ["←"], label: "shortcuts.gridToSidebar" },
       { keys: ["→"], label: "shortcuts.sidebarToGrid" },
+      { keys: ["↓"], label: "shortcuts.groupFilterToList" },
     ],
   },
 ];

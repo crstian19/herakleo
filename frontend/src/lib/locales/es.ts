@@ -9,6 +9,8 @@ const es = {
   "nav.noActiveLists": "Ninguna lista activa.",
   "nav.groups": "Grupos",
   "nav.noGroupName": "Sin grupo",
+  "nav.filterGroups": "Filtrar grupos…",
+  "nav.noGroupsMatch": "Ningún grupo coincide.",
   "nav.hideGroup": "Ocultar grupo",
   "nav.hideGroupNamed": "Ocultar grupo {name}",
   "nav.settings": "Ajustes",
@@ -66,6 +68,7 @@ const es = {
   "shortcuts.searchToGrid": "Del buscador a los canales",
   "shortcuts.gridToSidebar": "De la primera columna al menú",
   "shortcuts.sidebarToGrid": "Del menú a los canales",
+  "shortcuts.groupFilterToList": "Del filtro de grupos a los grupos",
   "nav.openMenu": "Abrir menú",
   "nav.closeMenu": "Cerrar menú",
 
@@ -92,6 +95,7 @@ const es = {
   "empty.noResults": "Sin resultados.",
 
   "toast.playing": "Reproduciendo {name} en {player}",
+  "toast.effectsAutoOff": "El scroll iba lento, así que se han desactivado los efectos visuales · los reactivas en Ajustes → Apariencia",
   "toast.thePlayer": "el reproductor",
   "toast.channelHidden": "{name} oculto · lo recuperas en Ajustes → Ocultos",
   "toast.channelShown": "{name} vuelve a estar visible",

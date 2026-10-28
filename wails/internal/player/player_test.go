@@ -3,6 +3,7 @@ package player
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -17,8 +18,10 @@ func testLaunch() launch {
 
 func TestArgsPerPlayer(t *testing.T) {
 	mpv := known[0].args(testLaunch(), Options{})
-	want := []string{"--force-window=immediate", "--really-quiet", "--title=Herakleo · a$$b", "--ytdl=no",
-		"--hwdec=auto-safe", "--playlist=/run/user/1000/herakleo/play-1.m3u"}
+	want := []string{
+		"--force-window=immediate", "--really-quiet", "--title=Herakleo · a$$b", "--ytdl=no",
+		"--hwdec=auto-safe", "--playlist=/run/user/1000/herakleo/play-1.m3u",
+	}
 	if !slices.Equal(mpv, want) {
 		t.Fatalf("mpv args %q", mpv)
 	}
@@ -228,5 +231,39 @@ func TestPlayRemovesPlaylistOnExit(t *testing.T) {
 	}
 	if !strings.Contains(string(list), "\n"+secretURL+"\n") {
 		t.Fatalf("player read %q", list)
+	}
+}
+
+func TestPlayersPerOS(t *testing.T) {
+	players := Available()
+	ids := make([]string, 0, len(players))
+	for _, p := range players {
+		ids = append(ids, p.ID)
+	}
+	want := map[string][]string{
+		"linux":   {"mpv", "vlc", "celluloid", "haruna"},
+		"darwin":  {"mpv", "vlc", "iina"},
+		"windows": {"mpv", "vlc"},
+	}[runtime.GOOS]
+	if !slices.Equal(ids, want) {
+		t.Fatalf("players on %s: %q, want %q", runtime.GOOS, ids, want)
+	}
+	if runtime.GOOS != "darwin" && Known("iina") {
+		t.Fatal("iina offered outside macOS")
+	}
+}
+
+func TestLookPathOr(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "player")
+	if err := os.WriteFile(bin, nil, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := lookPathOr("no-such-player", []string{filepath.Join(dir, "missing"), dir, bin}); err != nil || got != bin {
+		t.Fatalf("got %q, %v", got, err)
+	}
+	if _, err := lookPathOr("no-such-player", []string{dir}); err == nil {
+		t.Fatal("a directory is not a player")
 	}
 }

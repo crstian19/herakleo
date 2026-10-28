@@ -4,8 +4,21 @@
 
 <h1 align="center">Herakleo</h1>
 
-<p align="center">A fast desktop IPTV player for Linux. Load an M3U list or an Xtream Codes account,
-find a channel among tens of thousands, and watch it in mpv.</p>
+<p align="center">
+  <a href="https://github.com/crstian19/herakleo/releases">
+    <img src="https://img.shields.io/github/v/release/crstian19/herakleo?sort=semver&style=for-the-badge" alt="Release">
+  </a>
+  <a href="https://github.com/crstian19/herakleo/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/crstian19/herakleo/ci.yml?style=for-the-badge" alt="CI">
+  </a>
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-blue?style=for-the-badge" alt="Linux, Windows and macOS">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/crstian19/herakleo?style=for-the-badge" alt="License">
+  </a>
+</p>
+
+<p align="center">A fast desktop IPTV player for Linux, Windows and macOS. Load an M3U list or an Xtream
+Codes account, find a channel among tens of thousands, and watch it in mpv.</p>
 
 ## Features
 
@@ -13,8 +26,8 @@ find a channel among tens of thousands, and watch it in mpv.</p>
   date). Several lists at once, each one can be refreshed or turned off without deleting it.
 - **Built for big lists**: 65,000 channels search, filter and scroll smoothly. Searching is a
   single pass over a precomputed index and the channel grid only renders what is on screen.
-- **Plays in your player**: mpv by default; VLC, Celluloid, Haruna and SMPlayer also work. Stream
-  caching, hardware decoding and start volume can be set from the app.
+- **Plays in your player**: mpv by default; VLC everywhere, Celluloid and Haruna on Linux, IINA
+  on macOS. Stream caching, hardware decoding and start volume can be set from the app.
 - **Favourites, history and hiding**: hide channels or whole groups you never watch, keep a list of
   recent channels, back up favourites (they survive re-adding a list).
 - **Keyboard first**: every view works with arrows, Enter and Esc, so a TV remote is enough. Press
@@ -23,29 +36,40 @@ find a channel among tens of thousands, and watch it in mpv.</p>
   system, and six accent colours.
 - **Light on old machines**: visual effects can be turned off, and the grid can page (default) or
   scroll infinitely.
-- Everything stays on your machine, in `~/.config/herakleo`. No accounts, no telemetry.
+- Everything stays on your machine (the folder is shown in Settings). No accounts, no telemetry.
 
 ## Install
 
-Arch Linux packages are built from [`packaging/arch`](packaging/arch/README.md):
+Download the package for your system from the
+[latest release](https://github.com/crstian19/herakleo/releases/latest). Herakleo plays channels in
+an external player, so install one too: [mpv](https://mpv.io) is the default.
 
-```bash
-just package-arch wails
-sudo pacman -U packaging/arch/herakleo-wails/herakleo-wails-*.pkg.tar.zst
-sudo pacman -S mpv   # or any supported player
-```
+| System | File | Notes |
+|---|---|---|
+| Arch Linux | `herakleo-*.pkg.tar.zst` | `sudo pacman -U herakleo-*.pkg.tar.zst` |
+| Ubuntu 24.04+, Debian 13+ | `herakleo_*_amd64.deb` | `sudo apt install ./herakleo_*_amd64.deb` |
+| Fedora 39+ | `herakleo-*.x86_64.rpm` | `sudo dnf install ./herakleo-*.x86_64.rpm` |
+| Any Linux | `herakleo-*.flatpak` | `flatpak install --user herakleo-*.flatpak` (players still come from the system) |
+| Windows 10/11 | `herakleo-*-setup.exe`, or the `.zip` | Unsigned: on the SmartScreen warning, click *More info* → *Run anyway* |
+| macOS 12+ | `herakleo-*-macos-universal.dmg` | Unsigned: see below |
 
-Other distributions: build from source (below). Herakleo needs GTK 4 and `webkitgtk-6.0` at run
-time.
+Players are found on `PATH` and in their usual install folders (`Program Files` on Windows,
+`/Applications` and Homebrew on macOS). On Windows, `scoop install mpv` or the
+[mpv builds](https://mpv.io/installation/) work; on macOS, `brew install mpv` or IINA.
+
+**macOS**: the app is not notarized, so the first launch says it cannot be checked. Drag
+Herakleo to Applications, then either right-click it → *Open*, or run
+`xattr -dr com.apple.quarantine /Applications/Herakleo.app` once.
 
 ## Build from source
 
-Requirements: [Go](https://go.dev) 1.27+, [Bun](https://bun.sh), [just](https://just.systems),
-`gtk4`, `webkitgtk-6.0` and `pkgconf`.
+Requirements on Linux: [Go](https://go.dev) 1.27+, [Bun](https://bun.sh),
+[just](https://just.systems), `gtk4`, `webkitgtk-6.0` and `pkgconf`. Windows and macOS builds are
+made by the release workflow; its steps work by hand too.
 
 ```bash
 just setup         # frontend dependencies and git hooks
-just build-wails   # → wails/build/bin/herakleo-wails
+just build-wails   # → wails/build/bin/herakleo
 just dev-wails     # live-reloading development build
 just dev-mock      # the UI alone, in a browser, with fake data
 just test          # svelte-check and Go tests
@@ -68,7 +92,7 @@ Measurements are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 frontend/          Svelte UI, shared by both apps (src/lib/types.ts is the API contract)
 wails/             Go backend (Wails v3): playlist parsing, library, player
 tauri/src-tauri/   Rust backend (Tauri 2), deprecated and frozen
-packaging/arch/    PKGBUILDs
+packaging/         Linux packages: arch/ (PKGBUILD), aur/, linux/ (desktop file, deb/rpm), flatpak/
 scripts/           benchmark and scroll-profiling harnesses
 docs/              performance notes and backlog
 video/             Remotion project for the launch video
@@ -76,6 +100,20 @@ video/             Remotion project for the launch video
 
 Contributor notes (parity rules between the two backends, performance gotchas) are in
 [`AGENTS.md`](AGENTS.md); planned work is in [`docs/BACKLOG.md`](docs/BACKLOG.md).
+
+## Releases
+
+Note changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md) as they land. Then:
+
+```bash
+just bump 0.2.0    # CHANGELOG section, PKGBUILD pkgver and AppStream entry
+git commit -am "chore: release v0.2.0" && git tag v0.2.0 && git push --follow-tags
+```
+
+The tag starts [`release.yml`](.github/workflows/release.yml): it builds every package above and
+publishes them with a `SHA256SUMS`, using the version's changelog section as the release text.
+Running the workflow by hand builds the same packages as artifacts without publishing. Windows and
+macOS assets (icon, manifest, installer script, `Info.plist`) are in `wails/build/`.
 
 ## Support
 

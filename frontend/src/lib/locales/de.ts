@@ -9,6 +9,8 @@ const de: Messages = {
   "nav.noActiveLists": "Keine aktive Liste.",
   "nav.groups": "Gruppen",
   "nav.noGroupName": "Ohne Gruppe",
+  "nav.filterGroups": "Gruppen filtern…",
+  "nav.noGroupsMatch": "Keine passende Gruppe.",
   "nav.hideGroup": "Gruppe ausblenden",
   "nav.hideGroupNamed": "Gruppe {name} ausblenden",
   "nav.settings": "Einstellungen",
@@ -66,6 +68,7 @@ const de: Messages = {
   "shortcuts.searchToGrid": "Von der Suche zu den Sendern",
   "shortcuts.gridToSidebar": "Von der ersten Spalte zum Menü",
   "shortcuts.sidebarToGrid": "Vom Menü zu den Sendern",
+  "shortcuts.groupFilterToList": "Vom Gruppenfilter zu den Gruppen",
   "nav.openMenu": "Menü öffnen",
   "nav.closeMenu": "Menü schließen",
 
@@ -92,6 +95,7 @@ const de: Messages = {
   "empty.noResults": "Keine Ergebnisse.",
 
   "toast.playing": "{name} wird mit {player} abgespielt",
+  "toast.effectsAutoOff": "Das Scrollen war langsam, daher sind die visuellen Effekte aus · in Einstellungen → Darstellung wieder einschalten",
   "toast.thePlayer": "dem Player",
   "toast.channelHidden": "{name} ausgeblendet · wiederherstellen unter Einstellungen → Ausgeblendet",
   "toast.channelShown": "{name} ist wieder sichtbar",

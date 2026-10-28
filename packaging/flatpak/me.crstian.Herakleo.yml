@@ -1,0 +1,59 @@
+# Flatpak bundle for the GitHub release. Build the UI first (it is embedded in
+# the binary), then from the repo root:
+#   cd frontend && bun run build:wails && cd ..
+#   flatpak-builder --user --force-clean --repo=flatpak-repo flatpak-build packaging/flatpak/me.crstian.Herakleo.yml
+# Go modules are downloaded during the build (network allowed), which is fine
+# for our own bundle but not for Flathub.
+app-id: me.crstian.Herakleo
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+command: herakleo
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Players (mpv, VLC...) run on the host through flatpak-spawn --host:
+  # wails/internal/player/platform_linux.go
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: herakleo
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/golang/bin
+      build-args:
+        - --share=network
+      env:
+        GOPATH: /run/build/herakleo/gopath
+        GOFLAGS: -trimpath -modcacherw
+        GOTOOLCHAIN: auto
+        CGO_CFLAGS: -Wno-deprecated-declarations
+    build-commands:
+      - test -f wails/frontend/dist/index.html
+      - cd wails && go build -tags production -ldflags '-s -w' -o herakleo .
+      - install -Dm755 wails/herakleo /app/bin/herakleo
+      - install -Dm644 packaging/linux/me.crstian.Herakleo.desktop -t /app/share/applications
+      - install -Dm644 packaging/linux/me.crstian.Herakleo.metainfo.xml -t /app/share/metainfo
+      - |
+        for size in 128 256 512; do
+          install -Dm644 packaging/linux/icons/$size.png /app/share/icons/hicolor/${size}x${size}/apps/me.crstian.Herakleo.png
+        done
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .flatpak-builder
+          - flatpak-build
+          - flatpak-repo
+          - frontend/node_modules
+          - tauri
+          - video
+          - profiles
+          - assets
+          - packaging/arch
+          - wails/build/bin

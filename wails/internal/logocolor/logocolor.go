@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"time"
 
+	// Registers the WebP decoder: many provider logos are WebP.
 	_ "golang.org/x/image/webp"
 
 	"github.com/crstian19/herakleo/wails/internal/playlist"

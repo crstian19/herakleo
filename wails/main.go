@@ -1,3 +1,5 @@
+// Herakleo is a desktop IPTV player: this is its Go backend on Wails v3, which
+// serves the Svelte UI in ../frontend and opens channels in an external player.
 package main
 
 import (
@@ -46,13 +48,15 @@ func main() {
 		Linux: application.LinuxOptions{
 			// Under GTK 4 the Wayland app_id (the window class Hyprland and
 			// docks match .desktop files on) comes from the application ID,
-			// not the program name. Keep it distinct from the Tauri build.
-			ApplicationID: "me.crstian.herakleo-wails",
+			// not the program name. It is also the Flatpak ID and the
+			// .desktop file name (packaging/linux).
+			ApplicationID: "me.crstian.Herakleo",
 		},
+		Mac: application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "Herakleo · Wails",
+		Title:            "Herakleo",
 		Width:            1400,
 		Height:           900,
 		MinWidth:         420,

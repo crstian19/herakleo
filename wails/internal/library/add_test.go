@@ -13,26 +13,26 @@ func fakeProvider(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/list.m3u", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, "#EXTM3U\n#EXTINF:-1 group-title=\"News\",BBC\nhttp://s/bbc\n#EXTINF:-1,CNN\nhttp://s/cnn\n")
+		_, _ = fmt.Fprint(w, "#EXTM3U\n#EXTINF:-1 group-title=\"News\",BBC\nhttp://s/bbc\n#EXTINF:-1,CNN\nhttp://s/cnn\n")
 	})
 	mux.HandleFunc("/big.m3u", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, "#EXTM3U\n#EXTINF:-1 group-title=\"News\",BBC\nhttp://s/bbc\n"+
+		_, _ = fmt.Fprint(w, "#EXTM3U\n#EXTINF:-1 group-title=\"News\",BBC\nhttp://s/bbc\n"+
 			"#EXTINF:-1 group-title=\"Sports\",Zeta\nhttp://s/zeta\n"+
 			"#EXTINF:-1 group-title=\"News\",cnn\nhttp://s/cnn\n"+
 			"#EXTINF:-1 group-title=\"Sports\",antena 3\nhttp://s/a3\n")
 	})
 	mux.HandleFunc("/player_api.php", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("password") != "secret" {
-			fmt.Fprint(w, `{"user_info":{"auth":0}}`)
+			_, _ = fmt.Fprint(w, `{"user_info":{"auth":0}}`)
 			return
 		}
 		switch r.URL.Query().Get("action") {
 		case "":
-			fmt.Fprint(w, `{"user_info":{"auth":1,"status":"Active","exp_date":"1893456000"}}`)
+			_, _ = fmt.Fprint(w, `{"user_info":{"auth":1,"status":"Active","exp_date":"1893456000"}}`)
 		case "get_live_categories":
-			fmt.Fprint(w, `[{"category_id":"7","category_name":"Sports"}]`)
+			_, _ = fmt.Fprint(w, `[{"category_id":"7","category_name":"Sports"}]`)
 		case "get_live_streams":
-			fmt.Fprint(w, `[{"name":"ESPN","stream_id":42,"category_id":"7"},{"name":"no id","stream_id":null}]`)
+			_, _ = fmt.Fprint(w, `[{"name":"ESPN","stream_id":42,"category_id":"7"},{"name":"no id","stream_id":null}]`)
 		}
 	})
 	srv := httptest.NewServer(mux)

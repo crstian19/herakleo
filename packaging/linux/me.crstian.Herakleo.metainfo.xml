@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>me.crstian.Herakleo</id>
+  <name>Herakleo</name>
+  <summary>Fast IPTV player for M3U lists and Xtream Codes</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="me.crstian">
+    <name>Cristian Gutiérrez</name>
+  </developer>
+  <description>
+    <p>
+      Load an M3U list or an Xtream Codes account, find a channel among tens of thousands,
+      and watch it in mpv, VLC, Celluloid or Haruna.
+    </p>
+    <ul>
+      <li>Search, filter and scroll 65,000 channels smoothly</li>
+      <li>Favourites, history and hidden channels or groups</li>
+      <li>Every view works with the keyboard or a TV remote</li>
+      <li>No accounts and no telemetry: everything stays on your machine</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">me.crstian.Herakleo.desktop</launchable>
+  <url type="homepage">https://github.com/crstian19/herakleo</url>
+  <url type="bugtracker">https://github.com/crstian19/herakleo/issues</url>
+  <content_rating type="oars-1.1"/>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-10-28"/>
+  </releases>
+</component>

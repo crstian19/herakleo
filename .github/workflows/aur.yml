@@ -1,0 +1,72 @@
+name: AUR
+
+# Manual until the repo is public (packaging/aur/README.md). Then uncomment
+# the release trigger so each published release updates both packages.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Released version, without the v (e.g. 0.2.0)
+        required: true
+  # release:
+  #   types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  aur:
+    name: Publish to the AUR
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    strategy:
+      matrix:
+        package: [herakleo, herakleo-bin]
+    env:
+      VERSION: ${{ inputs.version || github.event.release.tag_name }}
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git openssh pacman-contrib
+
+      - uses: actions/checkout@v7
+
+      - name: Prepare the PKGBUILD
+        run: |
+          VERSION=${VERSION#v}
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p /tmp/pkg
+          if [ "${{ matrix.package }}" = herakleo ]; then
+            # The in-repo PKGBUILD builds from a local tarball; the AUR one
+            # downloads the tag's.
+            sed 's|^source=.*|source=("herakleo-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")|' \
+              packaging/arch/herakleo/PKGBUILD > /tmp/pkg/PKGBUILD
+          else
+            cp packaging/aur/herakleo-bin/PKGBUILD /tmp/pkg/PKGBUILD
+          fi
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/; s/^pkgrel=.*/pkgrel=1/" /tmp/pkg/PKGBUILD
+          useradd -m builder && chown -R builder /tmp/pkg
+          su builder -c "cd /tmp/pkg && updpkgsums && makepkg --printsrcinfo > .SRCINFO"
+          cat /tmp/pkg/PKGBUILD /tmp/pkg/.SRCINFO
+
+      - name: Push
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          AUR_USERNAME: ${{ secrets.AUR_USERNAME }}
+          AUR_EMAIL: ${{ secrets.AUR_EMAIL }}
+        run: |
+          install -dm700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur"
+          git config --global user.name "$AUR_USERNAME"
+          git config --global user.email "$AUR_EMAIL"
+          git clone "ssh://aur@aur.archlinux.org/${{ matrix.package }}.git" /tmp/aur
+          cp /tmp/pkg/PKGBUILD /tmp/pkg/.SRCINFO /tmp/aur/
+          cd /tmp/aur
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "Nothing to update"
+          else
+            git commit -m "Update to $VERSION"
+            git push origin HEAD:master
+          fi

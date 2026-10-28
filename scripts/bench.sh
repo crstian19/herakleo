@@ -17,7 +17,7 @@ cp -r "$src" "$work/config/herakleo"
 
 declare -A bins=(
   [tauri]="$root/tauri/src-tauri/target/release/herakleo-tauri"
-  [wails]="$root/wails/build/bin/herakleo-wails"
+  [wails]="$root/wails/build/bin/herakleo"
 )
 
 tree_rss_kb() { # RSS of a process and all its descendants

@@ -30,6 +30,8 @@ interface Prefs {
   browse: "pages" | "scroll";
   /** Decorative effects (ambient glow, hover zoom/shadow/spotlight, logo glows). Off for slow PCs. */
   effects: boolean;
+  /** The user set `effects` in Settings: slowscroll.ts no longer turns them off. */
+  effectsChosen: boolean;
 }
 
 const reducedMotion = () => {
@@ -48,6 +50,7 @@ const defaults: Prefs = {
   browse: "pages",
   // Follow the system's "reduce motion" setting until the user chooses.
   effects: !reducedMotion(),
+  effectsChosen: false,
 };
 
 function load(): Prefs {
@@ -84,8 +87,9 @@ export function applyAccent() {
 }
 
 /** Applies and persists the effects switch (app.css `:root[data-effects="off"]`). */
-export function setEffects(on: boolean) {
+export function setEffects(on: boolean, chosen = true) {
   prefs.effects = on;
+  if (chosen) prefs.effectsChosen = true;
   savePrefs();
   applyEffects();
 }

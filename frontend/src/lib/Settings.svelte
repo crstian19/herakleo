@@ -391,7 +391,7 @@
       <dt class="text-muted">{t("settings.backend")}</dt>
       <dd><span class="backend-badge backend-{api.name}">{api.name}</span></dd>
       <dt class="text-muted">{t("settings.dataDir")}</dt>
-      <dd class="font-mono text-xs break-all">~/.config/herakleo</dd>
+      <dd class="font-mono text-xs break-all">{settings?.dataDir ?? "~/.config/herakleo"}</dd>
       <dt class="text-muted">{t("settings.playerRow")}</dt>
       <dd>{t("settings.playerExternal", { player: settings?.players.find((p) => p.id === settings?.player)?.name ?? "—" })}</dd>
     </dl>
