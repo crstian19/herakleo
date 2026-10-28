@@ -284,6 +284,23 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The release text: feat and fix commits since the previous tag, by type.
+      - name: Release notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          range=${prev:+$prev..}$GITHUB_REF_NAME
+          section() {
+            local lines
+            lines=$(git log --no-merges --format='%s' "$range" | sed -n "s/^$1\(([^)]*)\)\?!\?: /- /p")
+            [ -n "$lines" ] && printf '## %s\n\n%s\n\n' "$2" "$lines"
+            return 0
+          }
+          { section feat "New"; section fix "Fixes"; } > notes.md
+          [ -n "$prev" ] && echo "**Full changes**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME" >> notes.md
+          cat notes.md
 
       - uses: actions/download-artifact@v8
         with:
@@ -298,8 +315,7 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
-          # The release text is built from the commits since the last tag.
-          generate_release_notes: true
+          body_path: notes.md
 
   aur:
     name: AUR
