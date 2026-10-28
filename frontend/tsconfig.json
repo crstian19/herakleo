@@ -19,7 +19,7 @@
     ],
     "paths": {
       "$backend": [
-        "./src/lib/backend/tauri.ts"
+        "./src/lib/backend/wails.ts"
       ]
     },
     "resolveJsonModule": true

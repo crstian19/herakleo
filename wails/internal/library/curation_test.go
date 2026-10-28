@@ -92,7 +92,7 @@ func TestHistoryAndDisable(t *testing.T) {
 	}
 }
 
-// Two Library values on one dir stand in for the Tauri and Wails apps.
+// Two Library values on one dir stand in for two running copies of the app.
 func TestTwoAppsDoNotOverwriteEachOther(t *testing.T) {
 	dir := t.TempDir()
 	a, s := newTestLibrary(t, dir)

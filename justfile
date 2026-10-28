@@ -8,18 +8,14 @@ wails_build := 'CGO_CFLAGS="-Wno-deprecated-declarations" go build -tags product
 default:
     @just --list
 
-# Install frontend + Tauri CLI deps and git hooks
+# Install frontend deps and git hooks
 setup:
     cd frontend && bun install
-    cd tauri && bun install
     lefthook install
 
 # UI only, in a browser, against fake data
 dev-mock:
     cd frontend && bun run dev:mock
-
-dev-tauri:
-    cd tauri && bunx tauri dev
 
 # Vite dev server + the app pointed at it (FRONTEND_DEVSERVER_URL, non-production build)
 dev-wails:
@@ -29,13 +25,6 @@ dev-wails:
     trap 'kill $vite 2>/dev/null' EXIT
     until curl -s -o /dev/null http://localhost:5173; do sleep 0.2; done
     cd wails && CGO_CFLAGS="-Wno-deprecated-declarations" FRONTEND_DEVSERVER_URL=http://localhost:5173 go run .
-
-build-tauri:
-    cd tauri && bunx tauri build --no-bundle
-
-# Builds .deb, .rpm and AppImage
-bundle-tauri:
-    cd tauri && bunx tauri build
 
 build-wails:
     cd frontend && bun install && bun run build:wails
@@ -55,37 +44,20 @@ lint:
     cd wails && CGO_CFLAGS=-Wno-deprecated-declarations golangci-lint run ./...
     cd wails && golangci-lint fmt --diff
 
-# Clean release builds of both, then binary size and build time side by side
-compare:
+# Start the release build, wait, and sum RSS of it plus its WebKit helpers
+mem secs="5":
     #!/usr/bin/env bash
     set -euo pipefail
-    cd tauri/src-tauri && cargo clean -q && cd ../..
-    t0=$(date +%s); (cd tauri && bunx tauri build --no-bundle >/dev/null 2>&1); t1=$(date +%s)
-    (cd wails && go clean -cache >/dev/null && just build-wails >/dev/null 2>&1); t2=$(date +%s)
-    printf "%-8s %10s %12s\n" app binary "clean build"
-    printf "%-8s %10s %11ss\n" tauri "$(du -h tauri/src-tauri/target/release/herakleo-tauri | cut -f1)" $((t1 - t0))
-    printf "%-8s %10s %11ss\n" wails "$(du -h wails/build/bin/herakleo | cut -f1)" $((t2 - t1))
-
-# Start one app (tauri|wails), wait, and sum RSS of it plus its WebKit helpers
-mem app="tauri" secs="5":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    case "{{ app }}" in
-      tauri) bin=tauri/src-tauri/target/release/herakleo-tauri ;;
-      wails) bin=wails/build/bin/herakleo ;;
-      *) echo "app must be tauri or wails"; exit 1 ;;
-    esac
-    "$bin" >/dev/null 2>&1 & pid=$!
+    wails/build/bin/herakleo >/dev/null 2>&1 & pid=$!
     sleep {{ secs }}
     pids=$(echo "$pid" $(pgrep -P "$pid" || true) | tr ' ' ',')
     kb=$(ps -o rss= -p "$pids" | awk '{s+=$1} END {print s}')
-    echo "{{ app }}: $((kb / 1024)) MiB RSS across processes $pids"
+    echo "$((kb / 1024)) MiB RSS across processes $pids"
     kill "$pid"
 
 # Tars the working tree (uncommitted changes included) and runs makepkg in each
-# PKGBUILD dir. No -s: install the makedepends yourself (go, bun, nodejs,
-# pkgconf; cargo too for Tauri).
-# Arch package (packaging/arch). The deprecated Tauri one: `just package-arch herakleo-tauri`
+# PKGBUILD dir. No -s: install the makedepends yourself (go, bun, nodejs, pkgconf).
+# Arch package from the working tree (packaging/arch)
 package-arch pkgs="herakleo":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -123,11 +95,11 @@ bump version:
     git diff --stat
     echo "Next: git commit -am 'chore: release v$v' && git tag v$v && git push --follow-tags"
 
-# End-to-end benchmark of both release builds on a copy of a library
+# End-to-end benchmark of the release build on a copy of a library
 # (window time, first page, in-webview API round-trips, peak RSS)
 bench library="" runs="3":
     scripts/bench.sh "{{ library }}" "{{ runs }}"
 
 # Real mouse-wheel scroll profile (needs ydotoold; --sysprof adds a capture in profiles/)
-profile-scroll app="wails" variant="baseline" *flags="":
-    scripts/profile-scroll.sh "{{ app }}" "{{ variant }}" {{ flags }}
+profile-scroll variant="baseline" *flags="":
+    scripts/profile-scroll.sh "{{ variant }}" {{ flags }}

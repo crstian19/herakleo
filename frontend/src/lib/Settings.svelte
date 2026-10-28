@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type AppSettings, type PlaybackOptions, type SettingsPatch, type SourceInfo } from "./api";
+  import { type AppSettings, type PlaybackOptions, type SettingsPatch, type SourceInfo } from "./api";
   import { ago, currentLocale, date, localeNames, setLanguage, systemLocale, t, type Locale, type MessageKey } from "./i18n.svelte";
   import { accents, prefs, savePrefs, setAccent, setEffects } from "./prefs.svelte";
 
@@ -388,10 +388,8 @@
   <section>
     <h3 class="section-title mb-4">{t("settings.about")}</h3>
     <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-2xl border border-line bg-surface p-4 text-sm">
-      <dt class="text-muted">{t("settings.backend")}</dt>
-      <dd><span class="backend-badge backend-{api.name}">{api.name}</span></dd>
       <dt class="text-muted">{t("settings.dataDir")}</dt>
-      <dd class="font-mono text-xs break-all">{settings?.dataDir ?? "~/.config/herakleo"}</dd>
+      <dd class="font-mono text-xs break-all">{settings?.dataDir ?? ""}</dd>
       <dt class="text-muted">{t("settings.playerRow")}</dt>
       <dd>{t("settings.playerExternal", { player: settings?.players.find((p) => p.id === settings?.player)?.name ?? "—" })}</dd>
     </dl>

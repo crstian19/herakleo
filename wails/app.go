@@ -16,9 +16,10 @@ import (
 )
 
 // App is a Wails service: every exported method is callable from the
-// frontend as "main.App.<Method>" (lib/backend/wails.ts) and must mirror the
-// Tauri commands. Methods that download take the call's context first; Wails
-// fills it in and cancels it if the frontend cancels the call.
+// frontend as "main.App.<Method>" (lib/backend/wails.ts) and must match the
+// Backend interface in lib/types.ts. Methods that download take the call's
+// context first; Wails fills it in and cancels it if the frontend cancels the
+// call.
 type App struct {
 	lib    *library.Library
 	player player.Player

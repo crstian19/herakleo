@@ -6,8 +6,8 @@ import (
 	"github.com/crstian19/herakleo/wails/internal/playlist"
 )
 
-// Same vectors as channel_id_matches_go_fnv64a in tauri/src-tauri/src/library/tests.rs.
-func TestChannelIDMatchesRust(t *testing.T) {
+// Pinned vectors: changing the ID scheme would orphan every saved favourite.
+func TestChannelIDVectors(t *testing.T) {
 	cases := map[string]string{
 		"":                                 "abc-cbf29ce484222325",
 		"http://example.com/live/u/p/1.ts": "abc-7a8bab84a10cac93",

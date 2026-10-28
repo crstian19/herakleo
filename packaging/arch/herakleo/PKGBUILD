@@ -32,7 +32,7 @@ optdepends=(
   'celluloid: alternative video player'
   'haruna: alternative video player'
 )
-# The package was called herakleo-wails while a Tauri build existed.
+# The package was called herakleo-wails while a second (Tauri) build existed.
 provides=('herakleo-wails')
 conflicts=('herakleo-wails')
 replaces=('herakleo-wails')

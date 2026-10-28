@@ -2,7 +2,6 @@ import type { ChannelSort } from "./types";
 
 // UI-only preferences, per machine. Backend data (lists, favourites) lives in
 // ~/.config/herakleo; these are just display choices, so localStorage is fine.
-// Each build has its own webview origin, so Tauri and Wails keep separate prefs.
 const KEY = "herakleo:prefs";
 
 /** Accent themes defined in app.css (`:root[data-accent=…]`); "gold" is the default. */

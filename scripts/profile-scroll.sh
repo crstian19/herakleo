@@ -5,7 +5,7 @@
 # lib/bench.ts) and quits; optionally the whole run is captured with sysprof,
 # whose WebKit/GTK marks show where each frame's time went.
 #
-# Usage: scripts/profile-scroll.sh <tauri|wails> [variant] [--sysprof]
+# Usage: scripts/profile-scroll.sh [variant] [--sysprof]
 #   variant: a key of scrollVariants in frontend/src/lib/bench.ts (default baseline)
 # Env:
 #   SCENARIO=scroll  fast flick down + slower scroll up (default)
@@ -18,19 +18,15 @@ set -euo pipefail
 # Captures and reports describe this machine: keep them readable by you only.
 umask 077
 
-app=${1:?tauri or wails}
-variant=${2:-baseline}
+app=wails
+variant=${1:-baseline}
 use_sysprof=false
-[ "${3:-}" = "--sysprof" ] && use_sysprof=true
+[ "${2:-}" = "--sysprof" ] && use_sysprof=true
 root=$(cd "$(dirname "$0")/.." && pwd)
 export YDOTOOL_SOCKET=${YDOTOOL_SOCKET:-/run/user/$(id -u)/.ydotool_socket}
 [ -S "$YDOTOOL_SOCKET" ] || { echo "ydotoold is not running ($YDOTOOL_SOCKET)" >&2; exit 1; }
 
-case "$app" in
-  tauri) bin="$root/tauri/src-tauri/target/release/herakleo-tauri" class="herakleo-tauri" ;;
-  wails) bin="$root/wails/build/bin/herakleo" class="me.crstian.Herakleo" ;;
-  *) echo "app must be tauri or wails" >&2; exit 1 ;;
-esac
+bin="$root/wails/build/bin/herakleo" class="me.crstian.Herakleo"
 [ -x "$bin" ] || { echo "missing $bin (run: just build)" >&2; exit 1; }
 
 out_dir="$root/profiles"

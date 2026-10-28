@@ -510,33 +510,6 @@ select.field option {
     font-weight: 600;
     line-height: 1.4;
   }
-
-  /* Which build is this window? Each backend gets its own colour. */
-  .backend-badge {
-    flex-shrink: 0;
-    border-radius: 999px;
-    border: 1px solid;
-    padding: 0.1rem 0.55rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  .backend-tauri {
-    color: #fdba74;
-    border-color: rgb(251 146 60 / 0.45);
-    background: rgb(251 146 60 / 0.12);
-  }
-  .backend-wails {
-    color: #7dd3fc;
-    border-color: rgb(56 189 248 / 0.45);
-    background: rgb(56 189 248 / 0.12);
-  }
-  .backend-mock {
-    color: var(--color-muted);
-    border-color: var(--color-line-hi);
-    background: var(--color-surface);
-  }
 }
 
 /* "Support the project" heart: a slow ping like tesdash's header button. */

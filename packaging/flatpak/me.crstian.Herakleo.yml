@@ -51,7 +51,6 @@ modules:
           - flatpak-build
           - flatpak-repo
           - frontend/node_modules
-          - tauri
           - video
           - profiles
           - assets

@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-// TestBenchRealLibrary times the hot paths on a real library, with the same
-// scenarios and method as bench_real_library in tauri/src-tauri/src/library/tests.rs.
+// TestBenchRealLibrary times the hot paths on a real library.
 // It only runs when HERAKLEO_BENCH_DIR points at a library directory (use a copy).
 func TestBenchRealLibrary(t *testing.T) {
 	dir := os.Getenv("HERAKLEO_BENCH_DIR")

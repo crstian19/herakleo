@@ -12,10 +12,6 @@ pre-commit:
       root: "wails/"
       # go:embed needs frontend/dist to exist before Go compiles.
       run: (cd ../frontend && bun run build:wails >/dev/null) && CGO_CFLAGS=-Wno-deprecated-declarations golangci-lint run ./...
-    rust-fmt:
-      glob: "tauri/src-tauri/**/*.rs"
-      root: "tauri/src-tauri/"
-      run: cargo fmt --check
     svelte-check:
       glob: "frontend/src/**/*.{ts,svelte}"
       root: "frontend/"

@@ -3,11 +3,11 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type Plugin } from "vite";
 
-// The UI is shared; the mode picks which backend adapter is bundled and
-// where the build lands (Tauri reads ./dist, Wails embeds ../wails/frontend/dist).
-// "mock" runs the UI in a browser against fake data. Any other mode
-// (e.g. svelte-check loading this file) falls back to Tauri.
-const modes = ["tauri", "wails", "mock"];
+// The mode picks which backend adapter is bundled and where the build lands:
+// "wails" is embedded by the Go app (../wails/frontend/dist), "mock" runs the
+// UI in a browser against fake data. Any other mode (e.g. svelte-check
+// loading this file) falls back to wails.
+const modes = ["wails", "mock"];
 
 // index.html carries the production CSP. Under `just dev-wails` the page is
 // served by Wails (not from http://localhost:5173), so Vite's HMR websocket is
@@ -19,7 +19,7 @@ const devCsp = (): Plugin => ({
 });
 
 export default defineConfig(({ mode: requested }) => {
-  const mode = modes.includes(requested) ? requested : "tauri";
+  const mode = modes.includes(requested) ? requested : "wails";
 
   return {
     plugins: [svelte(), tailwindcss(), devCsp()],
@@ -31,7 +31,7 @@ export default defineConfig(({ mode: requested }) => {
     clearScreen: false,
     server: { port: 5173, strictPort: true },
     build: {
-      outDir: mode === "wails" ? "../wails/frontend/dist" : mode === "mock" ? "dist-mock" : "dist",
+      outDir: mode === "wails" ? "../wails/frontend/dist" : "dist-mock",
       emptyOutDir: true,
       target: "es2022",
     },

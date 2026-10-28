@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// Same cases as the tests in tauri/src-tauri/src/playlist.rs.
 func TestParseExtinfWithCommas(t *testing.T) {
 	list := "#EXTM3U\n#EXTINF:-1 tvg-logo=\"http://l/a.png\" group-title=\"News, World\",BBC, One\nhttp://s/1\n"
 	got, err := ParseM3U(strings.NewReader(list))

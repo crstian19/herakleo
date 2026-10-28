@@ -85,25 +85,22 @@ just test          # svelte-check and Go tests
 The UI is Svelte 5 + Tailwind 4, rendered by the system WebKit. The app you install uses a Go
 backend on [Wails v3](https://v3.wails.io) (GTK 4).
 
-Herakleo was written twice on purpose: the same frontend also runs on a Rust backend with
-[Tauri 2](https://v2.tauri.app), to compare both frameworks on a real app. The Tauri build is
-**deprecated**: it stays in the repo (`just build-tauri`) as the reference for that comparison but
-gets no new features or fixes. Up to the freeze both backends implemented the same API, error
-codes and on-disk format, so they can share a library. On Linux, Tauri still uses the GTK 3 WebKit, which
-caps scrolling at 60 fps; Wails v3 on GTK 4 does not, which is why Wails is the main build.
+Herakleo was first written twice, on [Tauri 2](https://v2.tauri.app) and on Wails, to compare
+both frameworks on a real app. Wails won: on Linux, Tauri still uses the GTK 3 WebKit, which caps
+scrolling at 60 fps, and Wails v3 on GTK 4 does not. The Tauri version was removed after
+[v0.1.0](https://github.com/crstian19/herakleo/releases/tag/v0.1.0) and stays in the git history.
 Measurements are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ```
-frontend/          Svelte UI, shared by both apps (src/lib/types.ts is the API contract)
+frontend/          Svelte UI (src/lib/types.ts is the API contract with the backend)
 wails/             Go backend (Wails v3): playlist parsing, library, player
-tauri/src-tauri/   Rust backend (Tauri 2), deprecated and frozen
 packaging/         Linux packages: arch/ (PKGBUILD), aur/, linux/ (desktop file, deb/rpm), flatpak/
 scripts/           benchmark and scroll-profiling harnesses
 docs/              performance notes and backlog
 video/             Remotion project for the launch video
 ```
 
-Contributor notes (parity rules between the two backends, performance gotchas) are in
+Contributor notes (backend rules, performance gotchas) are in
 [`AGENTS.md`](AGENTS.md); planned work is in [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
 ## Releases

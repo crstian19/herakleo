@@ -1,7 +1,6 @@
 // Package library keeps the user's sources, their cached channels, favourites,
 // hidden items, history and shared settings, persisted as JSON under the config
-// dir. The on-disk layout is shared with the Tauri build so both apps open the
-// same library, possibly at the same time (see sync.go).
+// dir. Two running copies of the app may share it (see sync.go).
 package library
 
 import (
@@ -138,7 +137,7 @@ func (l *Library) Dir() string { return l.dir }
 // Open loads the library from dir, creating it on first run.
 func Open(dir string) (*Library, error) {
 	// 0700 because library.json holds passwords; MkdirAll leaves existing
-	// dirs alone, so tighten them too (the Tauri build may have created them).
+	// dirs alone, so tighten them too (an older build may have created them).
 	// gosec: dir is the user's config folder, and a directory needs the x bit.
 	for _, d := range []string{dir, filepath.Join(dir, "channels")} {
 		if err := os.MkdirAll(d, 0o700); err != nil { //nolint:gosec

@@ -27,8 +27,8 @@ const (
 var colorSlots = make(chan struct{}, colorWorkers)
 
 // LogoColors returns "#rrggbb" (or "" when unusable) for each logo URL.
-// Results are cached in memory and in colors.json, shared with the Tauri
-// build. Failures are cached in memory only, so a flaky host is retried
+// Results are cached in memory and in colors.json. Failures are cached in
+// memory only, so a flaky host is retried
 // on the next launch.
 func (l *Library) LogoColors(ctx context.Context, urls []string) map[string]string {
 	if len(urls) > maxColorBatch {

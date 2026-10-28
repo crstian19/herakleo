@@ -2,7 +2,7 @@
   import confetti from "canvas-confetti";
   import { siGithubsponsors, siKofi, siPaypal } from "simple-icons";
   // The light build: SVG renderer only and no expression eval, so it works
-  // under Tauri's CSP. heart.json is the same animation tesdash uses.
+  // under the app's CSP. heart.json is the same animation tesdash uses.
   import lottie from "lottie-web/build/player/lottie_light";
   import { api } from "./api";
   import CloseButton from "./CloseButton.svelte";

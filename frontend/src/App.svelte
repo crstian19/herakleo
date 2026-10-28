@@ -139,7 +139,7 @@
   let groupsGeneration = 0;
   const pending = new Set<string>();
 
-  // Each build shows its own mascot (Ferris for Tauri, the gopher for Wails).
+  // The mock (browser preview) has no app assets, so it uses the SVG logo.
   const logoSrc = api.name === "mock" ? "/logo.svg" : `/logo-${api.name}.png`;
   const enabledSources = $derived(sources.filter((s) => s.enabled));
   const viewTitle = (v: ChannelView) =>

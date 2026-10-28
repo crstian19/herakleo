@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Benchmarks both release builds end to end against a copy of a library:
+# Benchmarks the release build end to end against a copy of a library:
 # time until the window maps, time until the first page of channels is on
 # screen, API round-trips measured inside the webview (lib/bench.ts) and peak
 # RSS of the app plus its WebKit helpers. Usage: scripts/bench.sh [library-dir] [runs]
@@ -16,7 +16,6 @@ mkdir -p "$work/config"
 cp -r "$src" "$work/config/herakleo"
 
 declare -A bins=(
-  [tauri]="$root/tauri/src-tauri/target/release/herakleo-tauri"
   [wails]="$root/wails/build/bin/herakleo"
 )
 
@@ -34,7 +33,7 @@ per_process() { # "name=MiB ..." for the app and each WebKit helper
   ps -o comm=,rss= -p "$pids" 2>/dev/null | awk '{printf "%s=%d ", $1, $2/1024}'
 }
 
-for app in tauri wails; do
+for app in wails; do
   bin=${bins[$app]}
   [ -x "$bin" ] || { echo "missing $bin (run: just build)" >&2; exit 1; }
   for run in $(seq "$runs"); do

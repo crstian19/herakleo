@@ -1,4 +1,4 @@
-// Shared contract between the UI and both backends (Rust/Tauri and Go/Wails).
+// Contract between the UI and its backends: the Go app (wails) and fake data (mock).
 // Field names are camelCase on the wire in both implementations.
 
 export type SourceKind = "m3u_url" | "m3u_file" | "xtream";
@@ -86,8 +86,7 @@ export interface AppSettings extends PlaybackOptions {
   players: PlayerInfo[];
   refreshOnStart: boolean;
   cacheChoices: number[];
-  /** Absent in the frozen Tauri build. */
-  dataDir?: string;
+  dataDir: string;
 }
 
 export interface SettingsPatch extends Partial<PlaybackOptions> {
@@ -98,7 +97,7 @@ export interface SettingsPatch extends Partial<PlaybackOptions> {
 
 export interface Backend {
   /** Which implementation is running, shown in the UI for the comparison. */
-  readonly name: "tauri" | "wails" | "mock";
+  readonly name: "wails" | "mock";
   listSources(): Promise<SourceInfo[]>;
   addSource(source: NewSource): Promise<SourceInfo>;
   /** Empty fields keep their current value; changing location or credentials re-downloads. */
