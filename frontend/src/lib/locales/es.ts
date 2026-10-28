@@ -219,7 +219,7 @@ const es = {
   "accent.amethyst": "Amatista",
   "accent.emerald": "Esmeralda",
 
-  // Backend error codes (see AGENTS.md). {detail} is technical text from the backend.
+  // Backend error codes: Go returns `code` or `code: detail`. {detail} is technical text from the backend.
   "err.channel_not_found": "No se encontró el canal.",
   "err.source_not_found": "No se encontró la lista.",
   "err.source_removed": "La lista se eliminó mientras se estaba usando.",

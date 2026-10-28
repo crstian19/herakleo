@@ -74,7 +74,7 @@
   let gridEl = $state<HTMLElement>();
   // Virtualised grid: only the rows near the viewport are in the DOM. With
   // infinite scroll the page used to keep every card ever loaded, and past
-  // ~1,500 cards each frame took 600+ ms (docs/PERFORMANCE.md).
+  // ~1,500 cards each frame took 600+ ms.
   let win = $state({ start: 0, end: 0, padTop: 0, padBottom: 0, cols: 1, rowH: 160 });
   const visible = $derived(channels.slice(win.start, win.end));
   const WINDOW_MARGIN = 800; // px rendered above and below the viewport

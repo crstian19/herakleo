@@ -37,8 +37,6 @@ jobs:
               || { echo "::error::no <release version=\"$version\"> in the metainfo"; exit 1; }
             grep -q "^const Version = \"$version\"" wails/main.go \
               || { echo "::error::wails/main.go Version is not $version"; exit 1; }
-            grep -q "^## \[$version\]" CHANGELOG.md \
-              || { echo "::error::no ## [$version] section in CHANGELOG.md"; exit 1; }
           else
             version=$pkgver
           fi
@@ -287,14 +285,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The release text is this version's CHANGELOG.md section.
-      - name: Release notes
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          awk -v v="$VERSION" '/^## \[/ { on = index($0, "## [" v "]") == 1; next } /^\[.*\]: / { on = 0 } on' CHANGELOG.md > notes.md
-          cat notes.md
-
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -308,7 +298,8 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
-          body_path: notes.md
+          # The release text is built from the commits since the last tag.
+          generate_release_notes: true
 
   aur:
     name: AUR

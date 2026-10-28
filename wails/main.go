@@ -26,8 +26,8 @@ var assets embed.FS
 var icon []byte
 
 // Wails v3 runs on GTK 4 + webkitgtk-6.0 by default (v2 was GTK 3): that WebKit
-// scrolls at the monitor's refresh rate, while the GTK 3 one stays at 60 fps
-// (docs/PERFORMANCE.md). Release builds need `-tags production`; without it,
+// scrolls at the monitor's refresh rate, while the GTK 3 one stays at 60 fps.
+// Release builds need `-tags production`; without it,
 // FRONTEND_DEVSERVER_URL points the window at the Vite dev server.
 func main() {
 	cfg, err := os.UserConfigDir()

@@ -289,7 +289,7 @@ select.field option {
      edge colour change instantly, because animating them made WebKit
      restyle and repaint every frame of the transition; scrolling with the
      wheel starts and stops hovers constantly, and frames went from 8 to 25 ms
-     (docs/PERFORMANCE.md, "Scrolling with a real mouse wheel"). */
+     (`just profile-scroll`). */
   transition: transform 200ms ease;
 }
 /* While the grid scrolls, cards ignore the pointer, so hovers don't churn as

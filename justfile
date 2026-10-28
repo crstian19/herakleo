@@ -75,7 +75,7 @@ package-arch pkgs="herakleo":
     for pkg in {{ pkgs }}; do ls -1 "$PWD"/packaging/arch/$pkg/$pkg-*.pkg.tar.zst; done
 
 # The release workflow refuses tags whose version differs from these files.
-# Set the release version (app, Arch pkgver, AppStream entry, CHANGELOG); then commit and tag
+# Set the release version (app, Arch pkgver, AppStream entry); then commit and tag
 bump version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -86,12 +86,6 @@ bump version:
     meta=packaging/linux/me.crstian.Herakleo.metainfo.xml
     grep -q "<release version=\"$v\"" "$meta" \
       || sed -i "s|  <releases>|  <releases>\n    <release version=\"$v\" date=\"$(date +%F)\"/>|" "$meta"
-    # Unreleased becomes the new version; a fresh empty Unreleased goes on top.
-    if ! grep -q "^## \[$v\]" CHANGELOG.md; then
-      prev=$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md | head -1)
-      sed -i "s|^## \[Unreleased\]|## [Unreleased]\n\n## [$v] - $(date +%F)|" CHANGELOG.md
-      sed -i "s|^\[Unreleased\]: .*|[Unreleased]: https://github.com/crstian19/herakleo/compare/v$v...HEAD\n[$v]: https://github.com/crstian19/herakleo/compare/v$prev...v$v|" CHANGELOG.md
-    fi
     git diff --stat
     echo "Next: git commit -am 'chore: release v$v' && git tag v$v && git push --follow-tags"
 

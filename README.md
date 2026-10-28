@@ -89,31 +89,24 @@ Herakleo was first written twice, on [Tauri 2](https://v2.tauri.app) and on Wail
 both frameworks on a real app. Wails won: on Linux, Tauri still uses the GTK 3 WebKit, which caps
 scrolling at 60 fps, and Wails v3 on GTK 4 does not. The Tauri version was removed after
 [v0.1.0](https://github.com/crstian19/herakleo/releases/tag/v0.1.0) and stays in the git history.
-Measurements are in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ```
 frontend/          Svelte UI (src/lib/types.ts is the API contract with the backend)
 wails/             Go backend (Wails v3): playlist parsing, library, player
 packaging/         Linux packages: arch/ (PKGBUILD), aur/, linux/ (desktop file, deb/rpm), flatpak/
 scripts/           benchmark and scroll-profiling harnesses
-docs/              performance notes and backlog
-video/             Remotion project for the launch video
+docs/images/       README screenshot
 ```
-
-Contributor notes (backend rules, performance gotchas) are in
-[`AGENTS.md`](AGENTS.md); planned work is in [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
 ## Releases
 
-Note changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md) as they land. Then:
-
 ```bash
-just bump 0.2.0    # CHANGELOG section, PKGBUILD pkgver and AppStream entry
+just bump 0.2.0    # app version, PKGBUILD pkgver and AppStream entry
 git commit -am "chore: release v0.2.0" && git tag v0.2.0 && git push --follow-tags
 ```
 
 The tag starts [`release.yml`](.github/workflows/release.yml): it builds every package above and
-publishes them with a `SHA256SUMS`, using the version's changelog section as the release text.
+publishes them with a `SHA256SUMS` and release notes built from the commits.
 Running the workflow by hand builds the same packages as artifacts without publishing. Windows and
 macOS assets (icon, manifest, installer script, `Info.plist`) are in `wails/build/`.
 
