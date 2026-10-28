@@ -309,3 +309,11 @@ jobs:
         with:
           files: dist/*
           body_path: notes.md
+
+  aur:
+    name: AUR
+    needs: [version, publish]
+    uses: ./.github/workflows/aur.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit

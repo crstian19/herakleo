@@ -1,4 +1,4 @@
-# Maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+# Maintainer: Crstian <me@crstian.me>
 #
 # Prebuilt binary from the GitHub release (built on Ubuntu 24.04). The aur
 # workflow sets pkgver and the checksum.

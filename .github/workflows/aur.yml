@@ -1,15 +1,19 @@
 name: AUR
 
-# Manual until the repo is public (packaging/aur/README.md). Then uncomment
-# the release trigger so each published release updates both packages.
+# Called by release.yml once a release is published (a release made with
+# GITHUB_TOKEN would not trigger a `release` event here). Run it by hand to
+# republish a version.
 on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       version:
         description: Released version, without the v (e.g. 0.2.0)
         required: true
-  # release:
-  #   types: [published]
 
 permissions:
   contents: read
@@ -23,7 +27,7 @@ jobs:
       matrix:
         package: [herakleo, herakleo-bin]
     env:
-      VERSION: ${{ inputs.version || github.event.release.tag_name }}
+      VERSION: ${{ inputs.version }}
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm --needed git openssh pacman-contrib

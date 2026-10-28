@@ -1,4 +1,4 @@
-# Maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+# Maintainer: Crstian <me@crstian.me>
 #
 # Built from a tarball of the repo: `just package-arch` locally (working tree)
 # or the release workflow (the tagged commit). The AUR packages are in
