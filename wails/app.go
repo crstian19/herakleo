@@ -199,6 +199,9 @@ func playerOptions(s library.Settings) player.Options {
 // The path comes from the environment, never from the UI.
 const benchEnv = "HERAKLEO_BENCH_OUT"
 
+// quitApp is a variable so tests can run BenchReport without a Wails app.
+var quitApp = func() { application.Get().Quit() }
+
 // BenchMode is "" outside a benchmark run, otherwise HERAKLEO_BENCH_MODE
 // ("full" by default; "wheel[:variant]" for scripts/profile-scroll.sh).
 // Same contract as bench_mode in lib.rs.
@@ -227,7 +230,7 @@ func (a *App) BenchReport(report string) error {
 		return err
 	}
 	// Quit from outside this call, so the frontend still gets its answer.
-	go application.Get().Quit()
+	go quitApp()
 	return nil
 }
 
@@ -266,7 +269,12 @@ func osName() string {
 	if err != nil {
 		return ""
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	return parseOSRelease(string(data))
+}
+
+// parseOSRelease returns PRETTY_NAME from the contents of an os-release file.
+func parseOSRelease(data string) string {
+	for _, line := range strings.Split(data, "\n") {
 		if v, ok := strings.CutPrefix(line, "PRETTY_NAME="); ok {
 			return strings.Trim(v, `"`)
 		}
