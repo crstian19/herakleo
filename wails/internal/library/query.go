@@ -179,8 +179,8 @@ func (l *Library) sortedRefs() []chanRef {
 			refs = append(refs, chanRef{s, &l.channels[s.ID][i]})
 		}
 	}
-	// Case-insensitive, ties by exact name then ID: a total order, identical
-	// in the Rust build. Z→A is this order reversed.
+	// Case-insensitive, ties by exact name then ID: a total order, so pages
+	// never shuffle. Z→A is this order reversed.
 	slices.SortFunc(refs, func(a, b chanRef) int {
 		return cmp.Or(
 			strings.Compare(a.ch.lower, b.ch.lower),

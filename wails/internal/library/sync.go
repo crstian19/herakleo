@@ -76,7 +76,7 @@ func (l *Library) reloadLocked() error {
 		channels[s.ID], chanMod[s.ID] = withKeys(chs), mod
 	}
 
-	// Never persist "sources": null; the Rust build rejects it.
+	// Never persist "sources": null; older builds reject it.
 	l.sources = append([]*source{}, st.Sources...)
 	l.favorites = toSet(st.Favorites)
 	l.hiddenChannels = toSet(st.HiddenChannels)

@@ -58,11 +58,13 @@ if $use_sysprof; then
   for e in "${envs[@]}"; do sysprof_env+=(-e "$e"); done
   # sysprof stores its own environment in the capture ("spawnable.environ"),
   # so start it from a minimal one: no API keys or tokens end up in the file.
+  # Only the WebKit/GTK marks are recorded: no sysprofd, so no polkit prompt.
   env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin LANG="${LANG:-C.UTF-8}" \
     XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" DISPLAY="${DISPLAY:-}" \
     DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}" XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-}" \
     XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-}" \
-    sysprof-cli --gtk --use-trace-fd --no-perf -f "${sysprof_env[@]}" "$capture" -- "$bin" >"$work/sysprof.log" 2>&1 &
+    sysprof-cli --gtk --use-trace-fd --no-perf --no-sysprofd --no-battery --no-cpu --no-disk \
+      --no-memory --no-network -f "${sysprof_env[@]}" "$capture" -- "$bin" >"$work/sysprof.log" 2>&1 &
 else
   env "${envs[@]}" "$bin" >/dev/null 2>&1 &
 fi

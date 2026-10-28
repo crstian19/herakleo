@@ -70,8 +70,8 @@ func (x Xtream) Location() string {
 }
 
 // base validates the server and returns it exactly as typed (trimmed), not
-// re-serialised: Go and Rust normalise URLs differently, and the stream URL
-// feeds the channel ID, so both builds must start from the same string.
+// re-serialised: the stream URL feeds the channel ID, so normalising it would
+// change the IDs of saved favourites.
 func (x Xtream) base() (string, error) {
 	loc := x.Location()
 	u, err := ValidateHTTPURL(loc)

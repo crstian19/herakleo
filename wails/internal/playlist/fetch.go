@@ -102,7 +102,7 @@ func open(ctx context.Context, rawURL string, limit int64) (*body, error) {
 		}
 		return nil, fmt.Errorf("download_failed: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK { // Rust checks the same: 200 only
+	if resp.StatusCode != http.StatusOK { // 200 only
 		_ = resp.Body.Close()
 		return nil, fmt.Errorf("server_status: %s", resp.Status)
 	}

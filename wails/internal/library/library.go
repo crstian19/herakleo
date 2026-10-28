@@ -603,8 +603,8 @@ func (s *source) info() SourceInfo {
 	}
 }
 
-// ChannelID is "<sourceID>-<fnv64a(url)>". It must match the Rust build
-// byte for byte so favourites carry over between the two apps.
+// ChannelID is "<sourceID>-<fnv64a(url)>". Favourites are stored by ID, so
+// changing this would orphan every saved one (library_test.go pins it).
 func ChannelID(sourceID, streamURL string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(streamURL))
