@@ -122,6 +122,12 @@ small.
 **Where are my lists and passwords stored?** Only on your computer, in a file only your user can
 read. Settings shows the folder. Herakleo has no accounts and sends no telemetry.
 
+## The name
+
+Herakleo comes from **Herakleopolis** (Nen-nesut), the city that was the great rival of **Thebes** in
+ancient Egypt. The nod is to Javier Tebas and LaLiga's crusade against IPTV. History is not on our
+side, mind you: Thebes conquered Herakleopolis around 2040 BC.
+
 ## Support
 
 Herakleo is a side project. If it is useful to you, you can support it on
