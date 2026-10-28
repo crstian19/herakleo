@@ -13,7 +13,7 @@
   </a>
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-blue?style=for-the-badge" alt="Linux, Windows and macOS">
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/crstian19/herakleo?style=for-the-badge" alt="License">
+    <img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge" alt="License: GPL-3.0">
   </a>
 </p>
 
