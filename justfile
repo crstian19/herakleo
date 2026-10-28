@@ -33,6 +33,7 @@ build:
 
 test:
     cd frontend && bun run check
+    cd frontend && bun run test
     cd frontend && bun run build:wails
     cd wails && go test ./...
 
