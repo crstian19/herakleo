@@ -51,7 +51,7 @@ an external player, so install one too: [mpv](https://mpv.io) is the default.
 
 | System | File | Notes |
 |---|---|---|
-| Arch Linux | `herakleo-*.pkg.tar.zst` | `sudo pacman -U herakleo-*.pkg.tar.zst` |
+| Arch Linux | AUR: [`herakleo-bin`](https://aur.archlinux.org/packages/herakleo-bin) or [`herakleo`](https://aur.archlinux.org/packages/herakleo) (from source) | `paru -S herakleo-bin`, or `sudo pacman -U herakleo-*.pkg.tar.zst` from the release |
 | Ubuntu 24.04+, Debian 13+ | `herakleo_*_amd64.deb` | `sudo apt install ./herakleo_*_amd64.deb` |
 | Fedora 39+ | `herakleo-*.x86_64.rpm` | `sudo dnf install ./herakleo-*.x86_64.rpm` |
 | Any Linux | `herakleo-*.flatpak` | `flatpak install --user herakleo-*.flatpak` (players still come from the system) |
