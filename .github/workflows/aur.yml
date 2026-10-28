@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: archlinux:base-devel
     strategy:
+      fail-fast: false
       matrix:
         package: [herakleo, herakleo-bin]
     env:
@@ -61,7 +62,8 @@ jobs:
           install -dm700 ~/.ssh
           printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur"
+          # ssh reads /root/.ssh, not the container's $HOME, so point it at both files.
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
           git config --global user.name "$AUR_USERNAME"
           git config --global user.email "$AUR_EMAIL"
           git clone "ssh://aur@aur.archlinux.org/${{ matrix.package }}.git" /tmp/aur
