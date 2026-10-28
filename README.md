@@ -4,6 +4,8 @@
 
 <h1 align="center">Herakleo</h1>
 
+<p align="center"><i>Named after Herakleopolis, the ancient Egyptian city that stood up to Thebes.</i></p>
+
 <p align="center">
   <a href="https://github.com/crstian19/herakleo/releases">
     <img src="https://img.shields.io/github/v/release/crstian19/herakleo?sort=semver&style=for-the-badge" alt="Release">
@@ -126,12 +128,6 @@ small.
 
 **Where are my lists and passwords stored?** Only on your computer, in a file only your user can
 read. Settings shows the folder. Herakleo has no accounts and sends no telemetry.
-
-## The name
-
-Herakleo comes from **Herakleopolis** (Nen-nesut), the city that was the great rival of **Thebes** in
-ancient Egypt. The nod is to Javier Tebas and LaLiga's crusade against IPTV. History is not on our
-side, mind you: Thebes conquered Herakleopolis around 2040 BC.
 
 ## Support
 
