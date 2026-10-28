@@ -388,6 +388,8 @@
   <section>
     <h3 class="section-title mb-4">{t("settings.about")}</h3>
     <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-2xl border border-line bg-surface p-4 text-sm">
+      <dt class="text-muted">{t("settings.version")}</dt>
+      <dd class="font-mono text-xs">{settings?.version ?? ""}</dd>
       <dt class="text-muted">{t("settings.dataDir")}</dt>
       <dd class="font-mono text-xs break-all">{settings?.dataDir ?? ""}</dd>
       <dt class="text-muted">{t("settings.playerRow")}</dt>

@@ -87,6 +87,7 @@ export interface AppSettings extends PlaybackOptions {
   refreshOnStart: boolean;
   cacheChoices: number[];
   dataDir: string;
+  version: string;
 }
 
 export interface SettingsPatch extends Partial<PlaybackOptions> {

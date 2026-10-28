@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea, a player or a playlist format to support.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: The problem or the use case, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+  - type: textarea
+    id: other
+    attributes:
+      label: Other apps that do it
+      description: Optional. Links or screenshots help.

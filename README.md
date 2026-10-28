@@ -74,7 +74,7 @@ made by the release workflow; its steps work by hand too.
 
 ```bash
 just setup         # frontend dependencies and git hooks
-just build-wails   # → wails/build/bin/herakleo
+just build         # → wails/build/bin/herakleo
 just dev-wails     # live-reloading development build
 just dev-mock      # the UI alone, in a browser, with fake data
 just test          # svelte-check and Go tests

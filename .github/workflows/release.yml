@@ -35,6 +35,8 @@ jobs:
             [[ "$version" == "$pkgver" ]] || { echo "::error::tag v$version but PKGBUILD pkgver=$pkgver"; exit 1; }
             grep -q "<release version=\"$version\"" packaging/linux/me.crstian.Herakleo.metainfo.xml \
               || { echo "::error::no <release version=\"$version\"> in the metainfo"; exit 1; }
+            grep -q "^const Version = \"$version\"" wails/main.go \
+              || { echo "::error::wails/main.go Version is not $version"; exit 1; }
             grep -q "^## \[$version\]" CHANGELOG.md \
               || { echo "::error::no ## [$version] section in CHANGELOG.md"; exit 1; }
           else

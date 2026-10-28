@@ -13,6 +13,10 @@ import (
 	"github.com/crstian19/herakleo/wails/internal/library"
 )
 
+// Version is the release version; `just bump` sets it and the release
+// workflow checks it against the tag.
+const Version = "0.1.1"
+
 // Built by `bun run build:wails` in ../frontend.
 //
 //go:embed all:frontend/dist

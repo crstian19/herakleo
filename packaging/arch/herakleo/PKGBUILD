@@ -5,8 +5,8 @@
 # packaging/aur.
 
 pkgname=herakleo
-pkgver=0.1.0
-pkgrel=14
+pkgver=0.1.1
+pkgrel=1
 pkgdesc='Desktop IPTV player for M3U lists and Xtream Codes'
 arch=('x86_64')
 url='https://github.com/crstian19/herakleo'

@@ -1,0 +1,65 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not paste playlist URLs, Xtream servers, usernames or passwords: they give
+        anyone access to your account.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Herakleo version
+      description: Settings → About, or the release you installed.
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - Arch Linux (pacman / AUR)
+        - Debian / Ubuntu (.deb)
+        - Fedora / openSUSE (.rpm)
+        - Flatpak
+        - Linux tarball
+        - Windows installer
+        - Windows zip
+        - macOS (.dmg)
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Distribution and desktop on Linux (e.g. Fedora 43, GNOME, Wayland), or the Windows / macOS version.
+    validations:
+      required: true
+  - type: dropdown
+    id: player
+    attributes:
+      label: Player
+      options: [mpv, VLC, Celluloid, Haruna, IINA, Not related to playback]
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card
+      description: Only for blank windows or slow scrolling (e.g. NVIDIA RTX 3060, AMD 780M).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: On Linux, start `herakleo` from a terminal and paste what it prints (remove any URLs first).
+      render: text

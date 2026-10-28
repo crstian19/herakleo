@@ -98,6 +98,7 @@ type SettingsView struct {
 	CacheSecs        int           `json:"cacheSecs"`
 	Volume           int           `json:"volume"`
 	CacheChoices     []int         `json:"cacheChoices"`
+	Version          string        `json:"version"`
 	// Where library.json lives, with the home folder shown as ~ outside Windows.
 	DataDir string `json:"dataDir"`
 }
@@ -108,6 +109,7 @@ func (a *App) GetSettings() SettingsView {
 		Player: a.playerID(), Players: player.Available(), RefreshOnStart: s.RefreshOnStart,
 		SoftwareDecoding: s.SoftwareDecoding, CacheSecs: s.CacheSecs, Volume: s.Volume,
 		CacheChoices: player.CacheChoices, DataDir: displayDir(a.lib.Dir()),
+		Version: Version,
 	}
 }
 

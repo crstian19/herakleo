@@ -26,11 +26,10 @@ dev-wails:
     until curl -s -o /dev/null http://localhost:5173; do sleep 0.2; done
     cd wails && CGO_CFLAGS="-Wno-deprecated-declarations" FRONTEND_DEVSERVER_URL=http://localhost:5173 go run .
 
-build-wails:
+# Release binary: wails/build/bin/herakleo
+build:
     cd frontend && bun install && bun run build:wails
     cd wails && {{ wails_build }} -o build/bin/herakleo .
-
-build: build-wails
 
 test:
     cd frontend && bun run check
@@ -76,13 +75,14 @@ package-arch pkgs="herakleo":
     for pkg in {{ pkgs }}; do ls -1 "$PWD"/packaging/arch/$pkg/$pkg-*.pkg.tar.zst; done
 
 # The release workflow refuses tags whose version differs from these files.
-# Set the release version (Arch pkgver, AppStream entry, CHANGELOG); then commit and tag
+# Set the release version (app, Arch pkgver, AppStream entry, CHANGELOG); then commit and tag
 bump version:
     #!/usr/bin/env bash
     set -euo pipefail
     v="{{ version }}"
     [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must be x.y.z"; exit 1; }
     sed -i "s/^pkgver=.*/pkgver=$v/; s/^pkgrel=.*/pkgrel=1/" packaging/arch/herakleo/PKGBUILD
+    sed -i "s/^const Version = .*/const Version = \"$v\"/" wails/main.go
     meta=packaging/linux/me.crstian.Herakleo.metainfo.xml
     grep -q "<release version=\"$v\"" "$meta" \
       || sed -i "s|  <releases>|  <releases>\n    <release version=\"$v\" date=\"$(date +%F)\"/>|" "$meta"
