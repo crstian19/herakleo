@@ -55,7 +55,7 @@ func TestSortHideAndGroups(t *testing.T) {
 	if got := names(l.Channels(Query{View: ViewHidden})); !equal(got, "BBC") {
 		t.Fatalf("hidden view = %v", got)
 	}
-	if g := l.Groups(""); len(g) != 1 || g[0].Name != "News" || g[0].Count != 1 {
+	if g := l.Groups("", ""); len(g) != 1 || g[0].Name != "News" || g[0].Count != 1 {
 		t.Fatalf("groups = %+v", g)
 	}
 	if hg := l.HiddenGroups(); !equal(hg, "Sports") {
@@ -78,7 +78,7 @@ func TestHistoryAndDisable(t *testing.T) {
 	if _, err := l.SetEnabled(s.ID, false); err != nil {
 		t.Fatal(err)
 	}
-	if p := l.Channels(Query{}); p.Total != 0 || len(l.Groups("")) != 0 {
+	if p := l.Channels(Query{}); p.Total != 0 || len(l.Groups("", "")) != 0 {
 		t.Fatalf("disabled source still listed: %+v", p)
 	}
 	if err := l.ClearHistory(); err != nil {

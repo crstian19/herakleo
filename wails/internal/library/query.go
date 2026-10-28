@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"slices"
 	"strings"
+
+	"github.com/crstian19/herakleo/wails/internal/playlist"
 )
 
 // Channel is a channel as the UI sees it (no stream URL).
@@ -15,7 +17,29 @@ type Channel struct {
 	Logo     string `json:"logo"`
 	Favorite bool   `json:"favorite"`
 	Hidden   bool   `json:"hidden"`
+	// Media is "live", "movie" or "series".
+	Media string `json:"media"`
+	// Container: a series whose episodes are listed on demand, not playable itself.
+	Container bool `json:"container,omitempty"`
 }
+
+// Media filters for Query.Media and Groups; "" matches everything.
+const (
+	MediaAll    = ""
+	MediaLive   = "live"
+	MediaMovie  = playlist.MediaMovie
+	MediaSeries = playlist.MediaSeries
+)
+
+// mediaName is the UI name of a channel's media type.
+func mediaName(c *channel) string {
+	if c.Media == playlist.MediaLive {
+		return MediaLive
+	}
+	return c.Media
+}
+
+func mediaMatch(want string, c *channel) bool { return want == MediaAll || mediaName(c) == want }
 
 // Group is a channel group with its size.
 type Group struct {
@@ -40,10 +64,13 @@ type Query struct {
 	SourceID string `json:"sourceId"`
 	Group    string `json:"group"`
 	Search   string `json:"search"`
-	View     string `json:"view"`
-	Sort     string `json:"sort"`
-	Offset   int    `json:"offset"`
-	Limit    int    `json:"limit"`
+	// Media: MediaLive, MediaMovie, MediaSeries, or "" for all. History and
+	// the hidden view ignore it.
+	Media  string `json:"media"`
+	View   string `json:"view"`
+	Sort   string `json:"sort"`
+	Offset int    `json:"offset"`
+	Limit  int    `json:"limit"`
 }
 
 // Page is one slice of a query result plus the total match count.
@@ -91,12 +118,16 @@ func (l *Library) Channels(q Query) Page {
 		if q.Group != "" && c.Group != q.Group {
 			return false
 		}
+		if q.View != ViewHistory && q.View != ViewHidden && !mediaMatch(q.Media, c) {
+			return false
+		}
 		return needle == "" || strings.Contains(c.lower, needle)
 	}
 	view := func(s *source, c *channel) Channel {
 		return Channel{
 			ID: c.ID, SourceID: s.ID, Name: c.Name, Group: c.Group, Logo: c.Logo,
 			Favorite: l.favorites[c.ID], Hidden: l.hiddenChannels[c.ID],
+			Media: mediaName(c), Container: c.SeriesID != "",
 		}
 	}
 
@@ -198,8 +229,8 @@ func sourceOf(channelID string) string {
 }
 
 // Groups lists visible groups in first-seen order, for one source or all of
-// them, counting only visible channels.
-func (l *Library) Groups(sourceID string) []Group {
+// them and one media type or all, counting only visible channels.
+func (l *Library) Groups(sourceID, media string) []Group {
 	l.sync()
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -211,7 +242,7 @@ func (l *Library) Groups(sourceID string) []Group {
 			continue
 		}
 		for _, c := range l.channels[s.ID] {
-			if l.hiddenGroups[c.Group] || l.hiddenChannels[c.ID] {
+			if l.hiddenGroups[c.Group] || l.hiddenChannels[c.ID] || !mediaMatch(media, &c) {
 				continue
 			}
 			i, ok := index[c.Group]

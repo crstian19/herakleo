@@ -44,6 +44,44 @@ type Entry struct {
 	URL   string
 	// EPGID is the channel's ID in the XMLTV guide (tvg-id, epg_channel_id).
 	EPGID string
+	// Media is MediaLive (""), MediaMovie or MediaSeries.
+	Media string
+	// SeriesID is set on an Xtream series: not playable itself, its episodes
+	// come from SeriesInfo. URL is then a stable "xtream-series:<id>" key.
+	SeriesID string
+}
+
+// Media types of an entry.
+const (
+	MediaLive   = ""
+	MediaMovie  = "movie"
+	MediaSeries = "series"
+)
+
+// videoExts are file extensions of on-demand video; live streams are .ts,
+// .m3u8 or have none.
+var videoExts = []string{".mp4", ".mkv", ".avi", ".mov", ".m4v", ".wmv", ".webm"}
+
+// mediaOf guesses an M3U entry's type from its URL: Xtream-style panels
+// export VOD as /movie/… and /series/…, other lists as video files.
+func mediaOf(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return MediaLive
+	}
+	p := strings.ToLower(u.Path)
+	switch {
+	case strings.Contains(p, "/series/"):
+		return MediaSeries
+	case strings.Contains(p, "/movie/"):
+		return MediaMovie
+	}
+	for _, ext := range videoExts {
+		if strings.HasSuffix(p, ext) {
+			return MediaMovie
+		}
+	}
+	return MediaLive
 }
 
 // List is a parsed playlist plus the guide URL its header names, if any.
@@ -105,6 +143,7 @@ func ParseM3UList(r io.Reader) (List, error) {
 			if !isLogoURL(e.Logo) {
 				e.Logo = ""
 			}
+			e.Media = mediaOf(e.URL)
 			if IsStreamURL(e.URL) {
 				entries = append(entries, e)
 			}

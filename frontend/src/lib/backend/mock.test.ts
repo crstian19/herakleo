@@ -13,6 +13,7 @@ const query = (over: Partial<ChannelQuery> = {}): ChannelQuery => ({
   sourceId: "",
   group: "",
   search: "",
+  media: "live",
   view: "",
   sort: "",
   offset: 0,
@@ -28,6 +29,7 @@ const methods: (keyof Backend)[] = [
   "play", "clearHistory", "logoColors", "getSettings", "updateSettings", "exportFavorites",
   "importFavorites", "pickPlaylistFile", "benchMode", "openLink", "diagnostics", "benchReport",
   "refreshGuide", "setGuideUrl", "nowNext", "channelGuide", "setReminder", "listReminders",
+  "seriesEpisodes", "playEpisode",
 ];
 
 describe("mock backend", () => {
@@ -103,7 +105,7 @@ describe("listChannels", () => {
   it("hides whole groups, also from the group list", async () => {
     await api.setGroupHidden("Sports", true);
     expect((await api.listChannels(query({ group: "Sports" }))).total).toBe(0);
-    expect((await api.listGroups("")).some((g) => g.name === "Sports")).toBe(false);
+    expect((await api.listGroups("", "live")).some((g) => g.name === "Sports")).toBe(false);
     expect(await api.listHiddenGroups()).toEqual(["Sports"]);
     await api.setGroupHidden("Sports", false);
     expect(await api.listHiddenGroups()).toEqual([]);
@@ -161,5 +163,29 @@ describe("guide", () => {
   it("drops the query from a guide URL it shows", async () => {
     const s = await api.setGuideUrl("demo", "https://epg.example/guide.xml?token=secret");
     expect(s.guideUrl).toBe("https://epg.example/guide.xml");
+  });
+});
+
+describe("films and series", () => {
+  it("filters by media type, and every type when media is empty", async () => {
+    const live = await api.listChannels(query());
+    const movies = await api.listChannels(query({ media: "movie" }));
+    const all = await api.listChannels(query({ media: "" }));
+    expect(movies.total).toBeGreaterThan(0);
+    expect(movies.items.every((c) => c.media === "movie")).toBe(true);
+    expect(all.total).toBe(live.total + movies.total + (await api.listChannels(query({ media: "series" }))).total);
+    const groups = await api.listGroups("", "movie");
+    expect(groups.reduce((n, g) => n + g.count, 0)).toBe(movies.total);
+  });
+
+  it("lists a series' episodes and plays them, but never the series itself", async () => {
+    const show = (await api.listChannels(query({ media: "series" }))).items[0]!;
+    expect(show.container).toBe(true);
+    await expect(api.play(show.id)).rejects.toBe("not_playable");
+    const eps = await api.seriesEpisodes(show.id);
+    expect(eps.length).toBeGreaterThan(1);
+    await api.playEpisode(show.id, eps[0]!.id);
+    expect((await api.listChannels(query({ view: "history" }))).items[0]!.id).toBe(show.id);
+    await expect(api.seriesEpisodes("demo-0")).rejects.toBe("not_a_series");
   });
 });

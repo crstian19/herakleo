@@ -55,6 +55,9 @@ type source struct {
 	ListGuideURL   string `json:"listGuideUrl,omitempty"`
 	GuideUpdatedAt int64  `json:"guideUpdatedAt,omitempty"`
 	GuideChannels  int    `json:"guideChannels,omitempty"`
+	// Of ChannelCount, how many are films and series (the rest is live TV).
+	MovieCount  int `json:"movieCount,omitempty"`
+	SeriesCount int `json:"seriesCount,omitempty"`
 }
 
 // channel is the persisted form; URL stays in the backend since Xtream URLs
@@ -66,6 +69,11 @@ type channel struct {
 	Logo  string `json:"logo"`
 	URL   string `json:"url"`
 	EPGID string `json:"epgId,omitempty"`
+	// Media is playlist.MediaLive (""), MediaMovie or MediaSeries.
+	Media string `json:"media,omitempty"`
+	// SeriesID marks an Xtream series: not playable, its episodes are
+	// fetched when opened (Episodes).
+	SeriesID string `json:"seriesId,omitempty"`
 	// lower is Name in lower case, computed once at load (withKeys) so search
 	// and sort never re-lowercase 65k names per query. Not persisted.
 	lower string
@@ -133,6 +141,10 @@ type Library struct {
 	guideMu  sync.RWMutex
 	guides   map[string]playlist.Guide
 	guideMod map[string]time.Time
+
+	// Episodes of the series opened last (vod.go), with their stream URLs.
+	epMu     sync.Mutex
+	episodes map[string][]playlist.Episode
 
 	// Logo accent cache (colors.go), separate lock: filled by slow downloads.
 	colorMu sync.Mutex
@@ -203,6 +215,8 @@ type SourceInfo struct {
 	GuideUpdatedAt int64 `json:"guideUpdatedAt"`
 	// GuideChannels is how many channels the last guide matched.
 	GuideChannels int `json:"guideChannels"`
+	MovieCount    int `json:"movieCount"`
+	SeriesCount   int `json:"seriesCount"`
 }
 
 // Add downloads a new source and stores it. Nothing is saved if loading fails.
@@ -496,6 +510,9 @@ func (l *Library) StreamURL(channelID string) (name, streamURL string, err error
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	if c := l.channel(channelID); c != nil {
+		if c.SeriesID != "" {
+			return "", "", errors.New("not_playable")
+		}
 		return c.Name, c.URL, nil
 	}
 	return "", "", errors.New("channel_not_found")
@@ -526,6 +543,14 @@ func load(ctx context.Context, s *source) (loadResult, error) {
 		if err != nil {
 			return loadResult{}, err
 		}
+		// Films and series are extra: a panel without them (or one that
+		// fails on them) still loads its live channels.
+		if movies, err := x.Movies(ctx); err == nil {
+			e = append(e, movies...)
+		}
+		if series, err := x.Series(ctx); err == nil {
+			e = append(e, series...)
+		}
 		// Expiry is nice to have: a panel that hides it must not block loading.
 		acc, _ := x.AccountInfo(ctx)
 		return loadResult{entries: e, account: acc}, nil
@@ -547,7 +572,19 @@ func (l *Library) storeChannels(s *source, r loadResult) error {
 			continue
 		}
 		seen[id] = true
-		chs = append(chs, channel{ID: id, Name: e.Name, Group: e.Group, Logo: e.Logo, URL: e.URL, EPGID: e.EPGID, lower: strings.ToLower(e.Name)})
+		chs = append(chs, channel{
+			ID: id, Name: e.Name, Group: e.Group, Logo: e.Logo, URL: e.URL, EPGID: e.EPGID,
+			Media: e.Media, SeriesID: e.SeriesID, lower: strings.ToLower(e.Name),
+		})
+	}
+	movies, series := 0, 0
+	for _, c := range chs {
+		switch c.Media {
+		case playlist.MediaMovie:
+			movies++
+		case playlist.MediaSeries:
+			series++
+		}
 	}
 
 	data, err := json.Marshal(chs)
@@ -561,7 +598,7 @@ func (l *Library) storeChannels(s *source, r loadResult) error {
 	l.channels[s.ID] = chs
 	l.chanMod[s.ID] = modTime(path)
 	l.chanGen++
-	s.ChannelCount = len(chs)
+	s.ChannelCount, s.MovieCount, s.SeriesCount = len(chs), movies, series
 	s.UpdatedAt = time.Now().Unix()
 	s.ExpiresAt, s.AccountStatus = r.account.ExpiresAt, r.account.Status
 	s.ListGuideURL = r.guideURL
@@ -640,6 +677,7 @@ func (s *source) info() SourceInfo {
 		UpdatedAt: s.UpdatedAt, Enabled: !s.Disabled, ExpiresAt: s.ExpiresAt, AccountStatus: s.AccountStatus,
 		GuideURL: redactURL(s.GuideURL), HasGuide: s.GuideURL != "" || s.ListGuideURL != "" || s.Kind == KindXtream,
 		GuideUpdatedAt: s.GuideUpdatedAt, GuideChannels: s.GuideChannels,
+		MovieCount: s.MovieCount, SeriesCount: s.SeriesCount,
 	}
 }
 

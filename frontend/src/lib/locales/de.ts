@@ -277,6 +277,21 @@ const de: Messages = {
   "err.guide_no_match": "Das Programm passt zu keinem Sender der Liste.",
   "err.programme_over": "Diese Sendung ist schon vorbei.",
   "err.too_many_reminders": "Zu viele Erinnerungen: entferne einige.",
+  "media.label": "Inhaltstyp",
+  "media.live": "Live-TV",
+  "media.movies": "Filme",
+  "media.series": "Serien",
+  "header.movies": "{n} Filme",
+  "header.series": "{n} Serien",
+  "series.season": "Staffel {n}",
+  "series.episode": "Folge {n}",
+  "series.count": "{seasons} Staffeln · {episodes} Folgen",
+  "series.loading": "Folgen werden geladen…",
+  "series.empty": "Diese Serie hat keine Folgen.",
+  "settings.vodStats": "{movies} Filme · {series} Serien",
+  "err.not_playable": "Das ist eine Serie: Wähle eine Folge.",
+  "err.not_a_series": "Das ist keine Serie.",
+  "err.episode_not_found": "Folge nicht gefunden: Öffne die Serie erneut.",
 };
 
 export default de;

@@ -31,6 +31,8 @@ and watch it in mpv or VLC.</p>
   date). Several lists at once, each one can be refreshed or turned off without deleting it.
 - **Built for big lists**: 65,000 channels search, filter and scroll smoothly. Searching is a
   single pass over a precomputed index and the channel grid only renders what is on screen.
+- **Films and series**: Xtream VOD (movies, and series by season and episode) and the films in
+  M3U lists, in their own tabs next to live TV.
 - **TV guide (EPG)**: what is on now and next on every card, a day and a half of programmes per
   channel, and reminders when a show starts. The XMLTV guide comes from the Xtream panel, the M3U
   header (`url-tvg`) or a URL you add.

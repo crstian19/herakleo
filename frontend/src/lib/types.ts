@@ -26,6 +26,9 @@ export interface SourceInfo {
   guideUpdatedAt: number;
   /** Channels the last guide matched. */
   guideChannels: number;
+  /** Of channelCount, how many are films and series; the rest is live TV. */
+  movieCount: number;
+  seriesCount: number;
 }
 
 /** One guide entry; times are unix seconds. */
@@ -59,6 +62,20 @@ export interface Channel {
   logo: string;
   favorite: boolean;
   hidden: boolean;
+  media: MediaType;
+  /** A series whose episodes are listed on demand (seriesEpisodes); not playable itself. */
+  container?: boolean;
+}
+
+export type MediaType = "live" | "movie" | "series";
+
+/** One playable episode of a series. */
+export interface Episode {
+  id: string;
+  season: number;
+  number: number;
+  title: string;
+  plot?: string;
 }
 
 export interface Group {
@@ -77,6 +94,8 @@ export interface ChannelQuery {
   /** Empty string means all groups. */
   group: string;
   search: string;
+  /** "" = every type. History and the hidden view ignore it. */
+  media: MediaType | "";
   view: ChannelView;
   sort: ChannelSort;
   offset: number;
@@ -139,7 +158,8 @@ export interface Backend {
   refreshSource(id: string): Promise<SourceInfo>;
   setSourceEnabled(id: string, enabled: boolean): Promise<SourceInfo>;
   removeSource(id: string): Promise<void>;
-  listGroups(sourceId: string): Promise<Group[]>;
+  /** media "" counts every type. */
+  listGroups(sourceId: string, media: MediaType | ""): Promise<Group[]>;
   listChannels(query: ChannelQuery): Promise<ChannelPage>;
   setFavorite(channelId: string, favorite: boolean): Promise<void>;
   setChannelHidden(channelId: string, hidden: boolean): Promise<void>;
@@ -160,6 +180,10 @@ export interface Backend {
   /** Adds (on) or removes a reminder; resolves to the upcoming reminders. */
   setReminder(reminder: Reminder, on: boolean): Promise<Reminder[]>;
   listReminders(): Promise<Reminder[]>;
+  /** Episodes of a series (Channel.container), asked from the panel each time. */
+  seriesEpisodes(channelId: string): Promise<Episode[]>;
+  /** Plays an episode from the last seriesEpisodes call and records the series in the history. */
+  playEpisode(channelId: string, episodeId: string): Promise<void>;
   /** Accent colour per logo URL ("#rrggbb", or "" when unusable). Max 64 per call. */
   logoColors(urls: string[]): Promise<Record<string, string>>;
   getSettings(): Promise<AppSettings>;

@@ -391,7 +391,7 @@ func TestEmptyLibraryPassThroughs(t *testing.T) {
 	if got := a.ListHiddenGroups(); len(got) != 0 {
 		t.Errorf("ListHiddenGroups = %v", got)
 	}
-	if got := a.ListGroups("missing"); len(got) != 0 {
+	if got := a.ListGroups("missing", ""); len(got) != 0 {
 		t.Errorf("ListGroups = %v", got)
 	}
 	if got := a.ListChannels(library.Query{}); len(got.Items) != 0 {

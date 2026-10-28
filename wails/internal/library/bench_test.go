@@ -36,7 +36,7 @@ func TestBenchRealLibrary(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	group := l.Groups("")[0].Name
+	group := l.Groups("", "")[0].Name
 	query := func(q Query) func() { return func() { l.Channels(q) } }
 	measure("page", 50, query(Query{Limit: 120}))
 	measure("page+json", 50, func() { _, _ = json.Marshal(l.Channels(Query{Limit: 120})) })
@@ -44,5 +44,5 @@ func TestBenchRealLibrary(t *testing.T) {
 	measure("search_rare", 50, query(Query{Search: "zzqx", Limit: 120}))
 	measure("group", 50, query(Query{Group: group, Limit: 120}))
 	measure("sort_az", 50, query(Query{Sort: "az", Limit: 120}))
-	measure("groups", 50, func() { l.Groups("") })
+	measure("groups", 50, func() { l.Groups("", "") })
 }

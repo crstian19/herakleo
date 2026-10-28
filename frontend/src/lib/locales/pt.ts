@@ -276,6 +276,21 @@ const pt: Messages = {
   "err.guide_no_match": "O guia não corresponde a nenhum canal da lista.",
   "err.programme_over": "Esse programa já terminou.",
   "err.too_many_reminders": "Demasiados avisos: remova alguns.",
+  "media.label": "Tipo de conteúdo",
+  "media.live": "TV em direto",
+  "media.movies": "Filmes",
+  "media.series": "Séries",
+  "header.movies": "{n} filmes",
+  "header.series": "{n} séries",
+  "series.season": "Temporada {n}",
+  "series.episode": "Episódio {n}",
+  "series.count": "{seasons} temporadas · {episodes} episódios",
+  "series.loading": "A carregar episódios…",
+  "series.empty": "Esta série não tem episódios.",
+  "settings.vodStats": "{movies} filmes · {series} séries",
+  "err.not_playable": "É uma série: escolha um episódio.",
+  "err.not_a_series": "Não é uma série.",
+  "err.episode_not_found": "Episódio não encontrado: abra a série de novo.",
 };
 
 export default pt;

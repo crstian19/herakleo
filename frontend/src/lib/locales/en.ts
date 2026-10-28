@@ -275,6 +275,21 @@ const en: Messages = {
   "err.guide_no_match": "The guide matches none of the list’s channels.",
   "err.programme_over": "That programme is already over.",
   "err.too_many_reminders": "Too many reminders: remove some.",
+  "media.label": "Content type",
+  "media.live": "Live TV",
+  "media.movies": "Movies",
+  "media.series": "Series",
+  "header.movies": "{n} movies",
+  "header.series": "{n} series",
+  "series.season": "Season {n}",
+  "series.episode": "Episode {n}",
+  "series.count": "{seasons} seasons · {episodes} episodes",
+  "series.loading": "Loading episodes…",
+  "series.empty": "This series has no episodes.",
+  "settings.vodStats": "{movies} movies · {series} series",
+  "err.not_playable": "It is a series: pick an episode.",
+  "err.not_a_series": "It is not a series.",
+  "err.episode_not_found": "Episode not found: open the series again.",
 };
 
 export default en;

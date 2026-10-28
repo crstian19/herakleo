@@ -8,7 +8,9 @@
     type Channel,
     type ChannelSort,
     type ChannelView,
+    type Episode,
     type Group,
+    type MediaType,
     type NowNext,
     type Programme,
     type Reminder,
@@ -28,6 +30,7 @@
   import { buildReport } from "./lib/diagnostics";
   import SourceDialog from "./lib/SourceDialog.svelte";
   import GuideDialog from "./lib/GuideDialog.svelte";
+  import SeriesDialog from "./lib/SeriesDialog.svelte";
 
   const PAGE = 120; // cards fetched per load in scroll mode
   const PAGE_SIZE = 60; // cards per page in pagination mode (the default)
@@ -59,6 +62,15 @@
   const pageCount = $derived(Math.max(1, Math.ceil(total / PAGE_SIZE)));
 
   let sourceId = $state("");
+  // Live TV, films or series; the tabs only show when an enabled list has VOD.
+  let media = $state<MediaType>("live");
+  const hasVod = $derived(sources.some((s) => s.enabled && (s.movieCount > 0 || s.seriesCount > 0)));
+  const mediaTabs: { media: MediaType; label: "media.live" | "media.movies" | "media.series" }[] = [
+    { media: "live", label: "media.live" },
+    { media: "movie", label: "media.movies" },
+    { media: "series", label: "media.series" },
+  ];
+  let seriesFor = $state<Channel | null>(null);
   let group = $state("");
   let listView = $state<ChannelView>("");
   let searchInput = $state("");
@@ -168,7 +180,9 @@
       ? t("view.settings")
       : listView
         ? viewTitle(listView)
-        : group || (sources.find((s) => s.id === sourceId)?.name ?? viewTitle("")),
+        : group ||
+          (sources.find((s) => s.id === sourceId)?.name ??
+            (hasVod && media === "movie" ? t("media.movies") : hasVod && media === "series" ? t("media.series") : viewTitle(""))),
   );
 
   function notify(text: string, error = false, ms = error ? 6000 : 2500) {
@@ -188,7 +202,7 @@
   async function loadGroups() {
     const gen = ++groupsGeneration;
     try {
-      const [result, hidden] = await Promise.all([api.listGroups(sourceId), api.listHiddenGroups()]);
+      const [result, hidden] = await Promise.all([api.listGroups(sourceId, media), api.listHiddenGroups()]);
       if (gen === groupsGeneration) [groups, hiddenGroups] = [result, hidden];
     } catch (err) {
       notify(errorMessage(err), true);
@@ -205,6 +219,7 @@
         sourceId,
         group,
         search,
+        media,
         view: listView,
         sort: prefs.sort,
         offset: paged ? page * PAGE_SIZE : reset ? 0 : channels.length,
@@ -304,14 +319,20 @@
   });
 
   $effect(() => {
-    void sourceId;
+    void [sourceId, media];
     loadGroups();
   });
+
+  function setMedia(next: MediaType) {
+    if (next === media) return;
+    media = next;
+    group = "";
+  }
 
   // Any change of what is listed (or of the browse mode) starts again at page 1.
   // untrack: loadChannels reads `page`, which must not become a dependency.
   $effect(() => {
-    void [sourceId, group, search, listView, prefs.sort, prefs.browse];
+    void [sourceId, group, search, media, listView, prefs.sort, prefs.browse];
     untrack(() => {
       page = 0;
       loadChannels(true);
@@ -436,7 +457,7 @@
   // Asks now/next for the given cards that have no fresh answer yet.
   async function requestGuide(items: Channel[]) {
     if (!anyGuide) return;
-    const ids = items.map((c) => c.id).filter((id) => (guideUntil.get(id) ?? 0) <= clock);
+    const ids = items.filter((c) => c.media === "live").map((c) => c.id).filter((id) => (guideUntil.get(id) ?? 0) <= clock);
     for (let i = 0; i < ids.length; i += 200) {
       const batch = ids.slice(i, i + 200);
       batch.forEach((id) => guideUntil.set(id, clock + 60)); // no repeat while in flight
@@ -502,6 +523,25 @@
         announced.add(key);
         alertFor = r;
       }
+    }
+  }
+
+  // Cards and Enter: a series opens its episodes, anything else plays.
+  function open(c: Channel) {
+    if (c.container) seriesFor = c;
+    else play(c);
+  }
+
+  async function playEpisode(series: Channel, e: Episode) {
+    try {
+      await api.playEpisode(series.id, e.id);
+      seriesFor = null;
+      playingId = series.id;
+      notify(t("toast.playing", { name: `${series.name} · ${e.title || t("series.episode", { n: e.number })}`, player: playerName }));
+      countPlay();
+      if (listView === "history") loadChannels(true);
+    } catch (err) {
+      notify(errorMessage(err), true);
     }
   }
 
@@ -765,7 +805,7 @@
 
   function onkey(e: KeyboardEvent) {
     // The list dialog, the support popup and the help own their keys while open.
-    if (dialog || supportOpen || guideFor) return;
+    if (dialog || supportOpen || guideFor || seriesFor) return;
     if (helpOpen) {
       if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
@@ -840,7 +880,7 @@
     const cols = win.cols;
     if (e.key === "f" || e.key === "F") return (toggleFavorite(c), true);
     if (e.key === "h" || e.key === "H") return (toggleHidden(c), true);
-    if (e.key === "i" || e.key === "I") return ((guideFor = c), true);
+    if ((e.key === "i" || e.key === "I") && c.media === "live") return ((guideFor = c), true);
     if (e.key === "ArrowUp" && index < cols) return (focusSearch(), true);
     if (e.key === "ArrowLeft" && index % cols === 0) return (focusSidebar(), true);
     const rows = Math.max(1, Math.floor((scroller?.clientHeight ?? 0) / win.rowH));
@@ -1022,7 +1062,9 @@
       <div class="min-w-0 flex-1">
         <h2 class="truncate text-xl font-semibold tracking-tight sm:text-2xl">{heading}</h2>
         <p class="text-sm text-muted tabular-nums">
-          {view === "settings" ? t("header.settingsSubtitle") : t("header.channels", { n: total })}
+          {view === "settings"
+            ? t("header.settingsSubtitle")
+            : t(media === "movie" && hasVod ? "header.movies" : media === "series" && hasVod ? "header.series" : "header.channels", { n: total })}
         </p>
       </div>
       {#if view === "channels"}
@@ -1060,6 +1102,15 @@
               <option value="za">{t("sort.za")}</option>
             </select>
           </div>
+        </div>
+      {/if}
+      {#if view === "channels" && hasVod && listView !== "history" && listView !== "hidden"}
+        <div class="flex w-full gap-1 rounded-xl bg-white/5 p-1 sm:w-auto" role="tablist" aria-label={t("media.label")}>
+          {#each mediaTabs as tab (tab.media)}
+            <button class="chip w-auto justify-center px-4 text-sm whitespace-nowrap" role="tab" aria-selected={media === tab.media} class:is-active={media === tab.media} onclick={() => setMedia(tab.media)}
+              >{t(tab.label)}</button
+            >
+          {/each}
         </div>
       {/if}
     </header>
@@ -1116,7 +1167,7 @@
       {:else}
         <div bind:this={gridWrap} class="pt-2">
           <div style="height: {win.padTop}px"></div>
-          <div bind:this={gridEl} class="channel-grid" class:with-guide={anyGuide}>
+          <div bind:this={gridEl} class="channel-grid" class:with-guide={anyGuide && media === "live"}>
             {#each visible as c, i (c.id)}
               <ChannelCard
                 channel={c}
@@ -1125,7 +1176,7 @@
               playing={c.id === playingId}
               nownext={guide[c.id]}
               {clock}
-              onplay={play}
+              onplay={open}
               onfavorite={toggleFavorite}
                 onhide={toggleHidden}
                 onguide={(ch) => (guideFor = ch)}
@@ -1166,6 +1217,10 @@
 
 {#if helpOpen}
   <ShortcutsHelp onclose={() => (helpOpen = false)} />
+{/if}
+
+{#if seriesFor}
+  <SeriesDialog series={seriesFor} onclose={() => (seriesFor = null)} onplay={playEpisode} />
 {/if}
 
 {#if guideFor}

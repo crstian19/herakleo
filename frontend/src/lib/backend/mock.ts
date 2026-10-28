@@ -1,4 +1,4 @@
-import type { AppSettings, Backend, Channel, Programme, Reminder, SourceInfo } from "../types";
+import type { AppSettings, Backend, Channel, Episode, MediaType, Programme, Reminder, SourceInfo } from "../types";
 
 // In-memory backend for working on the UI in a plain browser (`bun run dev:mock`).
 // Enough groups to exercise the sidebar filter; real lists often have hundreds.
@@ -37,6 +37,8 @@ const sources: SourceInfo[] = [
     hasGuide: true,
     guideUpdatedAt: now - 3600,
     guideChannels: count - Math.floor(count / 5),
+    movieCount: 24,
+    seriesCount: 8,
   },
   {
     id: "xtream",
@@ -52,18 +54,42 @@ const sources: SourceInfo[] = [
     hasGuide: true,
     guideUpdatedAt: 0,
     guideChannels: 0,
+    movieCount: 0,
+    seriesCount: 0,
   },
 ];
 
-const channels: Channel[] = Array.from({ length: count }, (_, i) => ({
-  id: `demo-${i}`,
+const films = ["Viaje a la Luna", "El último tren", "Mar adentro", "La isla", "Noche en Madrid", "El faro", "Tierra roja", "Cuarto oscuro"];
+const shows2 = ["Los vecinos", "Distrito 9", "La oficina", "Agentes", "Hospital central", "El internado", "Mareas", "Sombras"];
+const vod = (media: MediaType, i: number, name: string, group: string): Channel => ({
+  id: `${media}-${i}`,
   sourceId: "demo",
-  name: channelName(i),
-  group: groups[i % groups.length]!,
+  name,
+  group,
   logo: "",
-  favorite: i % 7 === 0,
+  favorite: false,
   hidden: false,
-}));
+  media,
+  container: media === "series",
+});
+const channels: Channel[] = [
+  ...Array.from({ length: count }, (_, i) => ({
+    id: `demo-${i}`,
+    sourceId: "demo",
+    name: channelName(i),
+    group: groups[i % groups.length]!,
+    logo: "",
+    favorite: i % 7 === 0,
+    hidden: false,
+    media: "live" as const,
+  })),
+  ...Array.from({ length: 24 }, (_, i) => vod("movie", i, `${films[i % films.length]}${i >= films.length ? ` ${Math.floor(i / films.length) + 1}` : ""}`, ["Estrenos", "Drama", "Comedia"][i % 3]!)),
+  ...Array.from({ length: 8 }, (_, i) => vod("series", i, shows2[i]!, ["Drama", "Comedia"][i % 2]!)),
+];
+const episodesOf = (id: string): Episode[] =>
+  Array.from({ length: 3 }, (_, s) =>
+    Array.from({ length: 6 }, (_, e) => ({ id: `${id}-${s + 1}-${e + 1}`, season: s + 1, number: e + 1, title: `Capítulo ${e + 1}`, plot: e % 2 ? "" : "Episodio de prueba del modo demo." })),
+  ).flat();
 const hiddenGroups = new Set<string>();
 let reminders: Reminder[] = [];
 
@@ -120,12 +146,11 @@ export const backend: Backend = {
     return delay(s);
   },
   removeSource: () => Promise.reject("demo_unavailable"),
-  listGroups: () =>
-    delay(
-      groups
-        .filter((g) => !hiddenGroups.has(g))
-        .map((name) => ({ name, count: channels.filter((c) => c.group === name && visible(c)).length })),
-    ),
+  listGroups: (_, media) => {
+    const ofMedia = channels.filter((c) => visible(c) && (!media || c.media === media));
+    const names = [...new Set(ofMedia.map((c) => c.group))];
+    return delay(names.map((name) => ({ name, count: ofMedia.filter((c) => c.group === name).length })));
+  },
   listChannels: (q) => {
     const needle = q.search.toLowerCase();
     let hits =
@@ -134,7 +159,10 @@ export const backend: Backend = {
         : channels.filter((c) =>
             q.view === "hidden" ? c.hidden : visible(c) && (q.view !== "favorites" || c.favorite),
           );
-    hits = hits.filter((c) => (!q.group || c.group === q.group) && (!needle || c.name.toLowerCase().includes(needle)));
+    const anyMedia = !q.media || q.view === "history" || q.view === "hidden";
+    hits = hits.filter(
+      (c) => (anyMedia || c.media === q.media) && (!q.group || c.group === q.group) && (!needle || c.name.toLowerCase().includes(needle)),
+    );
     if (q.view !== "history" && q.sort) {
       hits = [...hits].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
       if (q.sort === "za") hits.reverse();
@@ -156,6 +184,7 @@ export const backend: Backend = {
   },
   listHiddenGroups: () => delay([...hiddenGroups].sort()),
   play: (id) => {
+    if (channels.find((c) => c.id === id)?.container) return Promise.reject("not_playable");
     history = [id, ...history.filter((x) => x !== id)].slice(0, 50);
     return delay(undefined);
   },
@@ -192,6 +221,11 @@ export const backend: Backend = {
     return delay(reminders);
   },
   listReminders: () => delay(reminders),
+  seriesEpisodes: (id) => (channels.find((c) => c.id === id)?.container ? delay(episodesOf(id)) : Promise.reject("not_a_series")),
+  playEpisode: (id) => {
+    history = [id, ...history.filter((x) => x !== id)].slice(0, 50);
+    return delay(undefined);
+  },
   getSettings: () => delay(settings),
   updateSettings: (patch) => {
     Object.assign(settings, patch);

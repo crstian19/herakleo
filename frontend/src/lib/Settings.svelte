@@ -136,6 +136,9 @@
               <p class="mt-1 text-xs text-muted tabular-nums">
                 {t("settings.listStats", { n: s.channelCount, when: s.updatedAt ? ago(s.updatedAt) : t("settings.never") })}
               </p>
+              {#if s.movieCount || s.seriesCount}
+                <p class="mt-0.5 text-xs text-muted tabular-nums">{t("settings.vodStats", { movies: s.movieCount, series: s.seriesCount })}</p>
+              {/if}
               {#if s.hasGuide}
                 <p class="mt-0.5 text-xs text-muted tabular-nums">
                   {s.guideUpdatedAt ? t("settings.guideStats", { n: s.guideChannels, when: ago(s.guideUpdatedAt) }) : t("settings.guideNever")}

@@ -22,6 +22,7 @@ const page = (q: Partial<ChannelQuery>): ChannelQuery => ({
   sourceId: "",
   group: "",
   search: "",
+  media: "live",
   view: "",
   sort: "",
   offset: 0,
@@ -34,7 +35,7 @@ const page = (q: Partial<ChannelQuery>): ChannelQuery => ({
 const BATCH = 10;
 
 export async function runBench(api: Backend, runs = 20, onprogress?: (name: string) => void): Promise<BenchResult> {
-  const groups = await api.listGroups("");
+  const groups = await api.listGroups("", "live");
   const group = groups[0]?.name ?? "";
   const first = await api.listChannels(page({}));
   const scenarios: [string, () => Promise<unknown>][] = [
@@ -46,7 +47,7 @@ export async function runBench(api: Backend, runs = 20, onprogress?: (name: stri
     ["group", () => api.listChannels(page({ group }))],
     ["sort_az", () => api.listChannels(page({ sort: "az" }))],
     ["sort_az_2", () => api.listChannels(page({ sort: "az", offset: 120 }))],
-    ["groups", () => api.listGroups("")],
+    ["groups", () => api.listGroups("", "live")],
   ];
 
   const rows: BenchRow[] = [];

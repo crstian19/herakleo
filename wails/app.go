@@ -13,6 +13,7 @@ import (
 
 	"github.com/crstian19/herakleo/wails/internal/library"
 	"github.com/crstian19/herakleo/wails/internal/player"
+	"github.com/crstian19/herakleo/wails/internal/playlist"
 )
 
 // App is a Wails service: every exported method is callable from the
@@ -47,7 +48,9 @@ func (a *App) UpdateSource(ctx context.Context, id string, req library.NewSource
 
 func (a *App) RemoveSource(id string) error { return a.lib.Remove(id) }
 
-func (a *App) ListGroups(sourceID string) []library.Group { return a.lib.Groups(sourceID) }
+func (a *App) ListGroups(sourceID, media string) []library.Group {
+	return a.lib.Groups(sourceID, media)
+}
 
 func (a *App) ListChannels(req library.Query) library.Page { return a.lib.Channels(req) }
 
@@ -93,6 +96,25 @@ func (a *App) SetReminder(r library.Reminder, on bool) ([]library.Reminder, erro
 
 func (a *App) ListReminders() []library.Reminder { return a.lib.Reminders() }
 
+// SeriesEpisodes lists an Xtream series' episodes, asking the panel each time.
+func (a *App) SeriesEpisodes(ctx context.Context, channelID string) ([]playlist.Episode, error) {
+	return a.lib.Episodes(ctx, channelID)
+}
+
+// PlayEpisode plays an episode listed by the last SeriesEpisodes call for the
+// series, and records the series in the history.
+func (a *App) PlayEpisode(channelID, episodeID string) error {
+	name, url, err := a.lib.EpisodeURL(channelID, episodeID)
+	if err != nil {
+		return err
+	}
+	if err := a.play(name, url); err != nil {
+		return err
+	}
+	_ = a.lib.AddHistory(channelID)
+	return nil
+}
+
 // Play opens the channel and records it in the history; a failed history
 // write must not stop playback that already started.
 func (a *App) Play(channelID string) error {
@@ -100,15 +122,19 @@ func (a *App) Play(channelID string) error {
 	if err != nil {
 		return err
 	}
-	opts := playerOptions(a.lib.Settings())
-	if opts.Validate() != nil {
-		opts = player.Options{} // a hand-edited library.json must not reach the player
-	}
-	if err := a.player.Play(a.playerID(), name, url, opts); err != nil {
+	if err := a.play(name, url); err != nil {
 		return err
 	}
 	_ = a.lib.AddHistory(channelID)
 	return nil
+}
+
+func (a *App) play(name, url string) error {
+	opts := playerOptions(a.lib.Settings())
+	if opts.Validate() != nil {
+		opts = player.Options{} // a hand-edited library.json must not reach the player
+	}
+	return a.player.Play(a.playerID(), name, url, opts)
 }
 
 // SettingsView is the shared settings plus what this machine can play with.
