@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/herakleo-wails.png" alt="Herakleo mascot" width="160">
+  <img src="assets/herakleo-wails.png" alt="Herakleo logo: a gopher dressed as a pharaoh holding a TV" width="160">
 </p>
 
 <h1 align="center">Herakleo</h1>
@@ -17,8 +17,13 @@
   </a>
 </p>
 
-<p align="center">A fast desktop IPTV player for Linux, Windows and macOS. Load an M3U list or an Xtream
-Codes account, find a channel among tens of thousands, and watch it in mpv.</p>
+<p align="center">A fast, free and open source <b>IPTV player</b> for Linux, Windows and macOS. Open an
+<b>M3U / M3U8 playlist</b> or an <b>Xtream Codes</b> account, find a channel among tens of thousands,
+and watch it in mpv or VLC.</p>
+
+<p align="center">
+  <img src="docs/images/herakleo-channels.png" alt="Herakleo channel grid with a list of demo channels, the group list on the left and the search box at the top" width="800">
+</p>
 
 ## Features
 
@@ -114,6 +119,18 @@ The tag starts [`release.yml`](.github/workflows/release.yml): it builds every p
 publishes them with a `SHA256SUMS`, using the version's changelog section as the release text.
 Running the workflow by hand builds the same packages as artifacts without publishing. Windows and
 macOS assets (icon, manifest, installer script, `Info.plist`) are in `wails/build/`.
+
+## FAQ
+
+**Does Herakleo include channels?** No. It is only a player: you add your own M3U playlist or the
+Xtream Codes account from your provider. Use it with content you have the right to watch.
+
+**Does it play the video itself?** No, it opens each channel in an external player (mpv, VLC,
+Celluloid, Haruna or IINA). Those players handle every codec IPTV providers use, and Herakleo stays
+small.
+
+**Where are my lists and passwords stored?** Only on your computer, in a file only your user can
+read. Settings shows the folder. Herakleo has no accounts and sends no telemetry.
 
 ## Support
 
