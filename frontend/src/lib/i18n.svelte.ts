@@ -65,7 +65,7 @@ export function t(key: MessageKey, params: Record<string, string | number> = {})
 }
 
 export function hasKey(key: string): key is MessageKey {
-  return key in es;
+  return Object.hasOwn(es, key);
 }
 
 export function num(n: number): string {

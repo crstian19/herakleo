@@ -100,8 +100,7 @@ describe("hasKey", () => {
     expect(hasKey("err.nope")).toBe(false);
   });
 
-  // `key in es` also matches inherited Object.prototype names; hasKey should check own keys.
-  it.skip("is false for inherited object property names", async () => {
+  it("is false for inherited object property names", async () => {
     const { hasKey } = await load();
     expect(hasKey("toString")).toBe(false);
   });

@@ -30,3 +30,6 @@ wails/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 !/README.md
 # The launch video project stays local too.
 /video/
+
+# vitest cache
+frontend/.vitest/
