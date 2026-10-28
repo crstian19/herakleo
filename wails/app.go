@@ -276,7 +276,6 @@ func osName() string {
 
 // projectLinks are the only URLs the UI may open in the system browser: it
 // sends an ID, never a URL, so a webview bug cannot open arbitrary links.
-// Same list as PROJECT_LINKS in lib.rs.
 // Donation links match https://blog.crstian.me/support/.
 var projectLinks = map[string]string{
 	"github":   "https://github.com/crstian19/herakleo",
