@@ -30,8 +30,8 @@ type App struct {
 	telemetryURL string
 }
 
-// ServiceStartup sends the daily ping, if the user said yes, a few seconds
-// after start so it never competes with loading the window.
+// ServiceStartup sends the daily ping (unless turned off) a few seconds after
+// start, so it never competes with loading the window.
 func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error { //nolint:unparam // Wails' service interface
 	go func() {
 		time.Sleep(5 * time.Second)
@@ -41,11 +41,12 @@ func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error 
 }
 
 // ping sends the usage event when telemetry is on and the last one is older
-// than telemetry.Interval (or always, with force). Failures are silent: a
-// stats server being down must never bother the user.
+// than telemetry.Interval (or always, with force). It is on by default; off
+// in Settings or with DO_NOT_TRACK=1 (consoledonottrack.com) it sends nothing.
+// Failures are silent: a stats server being down must never bother the user.
 func (a *App) ping(force bool) {
 	s := a.lib.Settings()
-	if s.Telemetry != library.TelemetryOn || (!force && time.Since(time.Unix(s.LastPing, 0)) < telemetry.Interval) {
+	if !s.TelemetryEnabled() || doNotTrack() || (!force && time.Since(time.Unix(s.LastPing, 0)) < telemetry.Interval) {
 		return
 	}
 	id, err := a.lib.TelemetryInstall(telemetry.NewInstallID)
@@ -73,6 +74,21 @@ func systemLanguage() string {
 		}
 	}
 	return ""
+}
+
+func telemetryView(s library.Settings) string {
+	switch {
+	case doNotTrack():
+		return "dnt"
+	case s.TelemetryEnabled():
+		return library.TelemetryOn
+	}
+	return library.TelemetryOff
+}
+
+func doNotTrack() bool {
+	v := os.Getenv("DO_NOT_TRACK")
+	return v != "" && v != "0" && !strings.EqualFold(v, "false")
 }
 
 func inFlatpak() bool {
@@ -201,7 +217,7 @@ type SettingsView struct {
 	Volume           int           `json:"volume"`
 	CacheChoices     []int         `json:"cacheChoices"`
 	Version          string        `json:"version"`
-	// Telemetry is "" until answered, then "on" or "off".
+	// Telemetry is "on" or "off"; "dnt" when DO_NOT_TRACK turns it off.
 	Telemetry string `json:"telemetry"`
 	// Where library.json lives, with the home folder shown as ~ outside Windows.
 	DataDir string `json:"dataDir"`
@@ -213,7 +229,7 @@ func (a *App) GetSettings() SettingsView {
 		Player: a.playerID(), Players: player.Available(), RefreshOnStart: s.RefreshOnStart,
 		SoftwareDecoding: s.SoftwareDecoding, CacheSecs: s.CacheSecs, Volume: s.Volume,
 		CacheChoices: player.CacheChoices, DataDir: displayDir(a.lib.Dir()),
-		Version: Version, Telemetry: s.Telemetry,
+		Version: Version, Telemetry: telemetryView(s),
 	}
 }
 
@@ -240,7 +256,7 @@ func (a *App) UpdateSettings(patch library.SettingsPatch) (SettingsView, error) 
 		return SettingsView{}, err
 	}
 	if patch.Telemetry != nil && *patch.Telemetry == library.TelemetryOn {
-		go a.ping(true) // count the install the moment they say yes
+		go a.ping(true) // turned back on: count it now, with its new install ID
 	}
 	return a.GetSettings(), nil
 }

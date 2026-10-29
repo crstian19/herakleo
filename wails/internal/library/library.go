@@ -113,8 +113,8 @@ type Settings struct {
 	SoftwareDecoding bool `json:"softwareDecoding"`
 	CacheSecs        int  `json:"cacheSecs"`
 	Volume           int  `json:"volume"`
-	// Telemetry is "" until the user answers the first-launch question,
-	// then TelemetryOn or TelemetryOff.
+	// Telemetry is TelemetryOff when the user turned the statistics off in
+	// Settings; anything else (the default, "") means on.
 	Telemetry string `json:"telemetry,omitempty"`
 	// InstallID is the random ID pings carry; cleared when telemetry is off.
 	InstallID string `json:"installId,omitempty"`
@@ -122,11 +122,14 @@ type Settings struct {
 	LastPing int64 `json:"lastPing,omitempty"`
 }
 
-// Telemetry answers.
+// Telemetry settings.
 const (
 	TelemetryOn  = "on"
 	TelemetryOff = "off"
 )
+
+// TelemetryEnabled: statistics are on unless turned off in Settings.
+func (s Settings) TelemetryEnabled() bool { return s.Telemetry != TelemetryOff }
 
 // Library is safe for concurrent use; Wails calls bound methods from many goroutines.
 type Library struct {
@@ -532,7 +535,7 @@ func (l *Library) TelemetryInstall(newID func() string) (string, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.syncLocked()
-	if l.settings.Telemetry != TelemetryOn {
+	if !l.settings.TelemetryEnabled() {
 		return "", nil
 	}
 	if l.settings.InstallID == "" {

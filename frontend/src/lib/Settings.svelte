@@ -420,7 +420,7 @@
         type="checkbox"
         class="size-4 accent-accent"
         checked={settings?.telemetry === "on"}
-        disabled={!settings}
+        disabled={!settings || settings.telemetry === "dnt"}
         onchange={(e) => {
           const on = e.currentTarget.checked;
           onsettings({ telemetry: on ? "on" : "off" }, () => t(on ? "toast.telemetryOn" : "toast.telemetryOff"));
@@ -428,6 +428,9 @@
       />
       {t("settings.telemetry")}
     </label>
+    {#if settings?.telemetry === "dnt"}
+      <p class="mt-2 px-1 text-xs text-muted">{t("settings.telemetryDnt")}</p>
+    {/if}
   </section>
 
   <section>

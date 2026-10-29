@@ -119,7 +119,7 @@ const settings: AppSettings = {
   cacheChoices: [0, 10, 30, 60, 120],
   dataDir: "~/.config/herakleo",
   version: "0.0.0-mock",
-  telemetry: "",
+  telemetry: "on",
   players: [
     { id: "mpv", name: "mpv", installed: true, options: ["softwareDecoding", "cacheSecs", "volume"] },
     { id: "vlc", name: "VLC", installed: true, options: ["softwareDecoding", "cacheSecs"] },

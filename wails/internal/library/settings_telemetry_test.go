@@ -7,12 +7,9 @@ func TestTelemetrySettings(t *testing.T) {
 	n := 0
 	newID := func() string { n++; return "id-" + string(rune('0'+n)) }
 
-	if id, err := l.TelemetryInstall(newID); err != nil || id != "" {
-		t.Fatalf("not asked yet: %q, %v", id, err)
-	}
 	on, off := TelemetryOn, TelemetryOff
-	if _, err := l.UpdateSettings(SettingsPatch{Telemetry: &on}); err != nil {
-		t.Fatal(err)
+	if !l.Settings().TelemetryEnabled() {
+		t.Fatal("telemetry is on by default")
 	}
 	id, _ := l.TelemetryInstall(newID)
 	if again, _ := l.TelemetryInstall(newID); id != "id-1" || again != id {
@@ -27,11 +24,11 @@ func TestTelemetrySettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s := l2.Settings(); s.Telemetry != on || s.InstallID != "id-1" || s.LastPing != 1234 {
+	if s := l2.Settings(); !s.TelemetryEnabled() || s.InstallID != "id-1" || s.LastPing != 1234 {
 		t.Errorf("persisted %+v", s)
 	}
 
-	// Saying no forgets the ID; saying yes again starts a new one.
+	// Turning it off forgets the ID; turning it on again starts a new one.
 	if _, err := l.UpdateSettings(SettingsPatch{Telemetry: &off}); err != nil {
 		t.Fatal(err)
 	}

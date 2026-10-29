@@ -1,4 +1,5 @@
-// Package telemetry sends the anonymous, opt-in usage ping: one "launch"
+// Package telemetry sends the anonymous usage ping (on by default, off in
+// Settings or with DO_NOT_TRACK): one "launch"
 // event a day to the author's Umami, with the app version, OS, architecture,
 // UI language and a random install ID. Never lists, channels or URLs. What it
 // sends is documented in the README ("Telemetry"); keep both in step.

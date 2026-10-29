@@ -294,13 +294,10 @@ const es = {
   "err.episode_not_found": "No se encontró el episodio: abre la serie otra vez.",
   "settings.privacy": "Privacidad",
   "settings.telemetry": "Enviar estadísticas de uso anónimas",
-  "settings.telemetryHint": "Una vez al día: versión, sistema, idioma y un identificador aleatorio. Nunca tus listas, canales ni lo que ves.",
-  "telemetry.title": "¿Ayudas con estadísticas anónimas?",
-  "telemetry.body": "Saber cuánta gente usa Herakleo y en qué sistemas ayuda a mejorarlo. Solo versión, sistema, idioma y un identificador aleatorio; nada de tus listas ni de lo que ves. Puedes cambiarlo en Ajustes.",
+  "settings.telemetryDnt": "Desactivadas por la variable DO_NOT_TRACK de tu sistema.",
+  "settings.telemetryHint": "Es lo único que se guarda: una vez al día, la versión, el sistema, el idioma y un identificador aleatorio de esta instalación. Nunca tus listas, canales ni lo que ves.",
   "telemetry.what": "Qué se envía",
-  "telemetry.yes": "Sí, enviar",
-  "telemetry.no": "No, gracias",
-  "toast.telemetryOn": "Gracias: se enviarán estadísticas anónimas",
+  "toast.telemetryOn": "Estadísticas anónimas activadas",
   "toast.telemetryOff": "No se enviará ninguna estadística",
 } as const;
 

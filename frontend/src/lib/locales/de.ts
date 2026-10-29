@@ -294,13 +294,10 @@ const de: Messages = {
   "err.episode_not_found": "Folge nicht gefunden: Öffne die Serie erneut.",
   "settings.privacy": "Datenschutz",
   "settings.telemetry": "Anonyme Nutzungsstatistiken senden",
-  "settings.telemetryHint": "Einmal am Tag: Version, System, Sprache und eine zufällige ID. Nie deine Listen, Sender oder was du schaust.",
-  "telemetry.title": "Mit anonymen Statistiken helfen?",
-  "telemetry.body": "Zu wissen, wie viele Leute Herakleo auf welchen Systemen nutzen, hilft es zu verbessern. Nur Version, System, Sprache und eine zufällige ID; nichts über deine Listen oder was du schaust. Änderbar in den Einstellungen.",
+  "settings.telemetryDnt": "Durch die Variable DO_NOT_TRACK deines Systems ausgeschaltet.",
+  "settings.telemetryHint": "Nur das wird gespeichert: einmal am Tag Version, System, Sprache und eine zufällige ID dieser Installation. Nie deine Listen, Sender oder was du schaust.",
   "telemetry.what": "Was gesendet wird",
-  "telemetry.yes": "Ja, senden",
-  "telemetry.no": "Nein, danke",
-  "toast.telemetryOn": "Danke: Es werden anonyme Statistiken gesendet",
+  "toast.telemetryOn": "Anonyme Statistiken an",
   "toast.telemetryOff": "Es werden keine Statistiken gesendet",
 };
 
