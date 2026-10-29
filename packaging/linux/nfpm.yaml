@@ -6,11 +6,11 @@ platform: linux
 version: ${VERSION}
 section: video
 priority: optional
-maintainer: Cristian Gutiérrez <cgutierrez@helmcode.com>
+maintainer: Crstian <me@crstian.me>
 description: |
   Desktop IPTV player for M3U lists and Xtream Codes.
   Plays channels in an external player (mpv, VLC, Celluloid or Haruna).
-vendor: Cristian Gutiérrez
+vendor: Crstian
 homepage: https://github.com/crstian19/herakleo
 license: GPL-3.0-or-later
 

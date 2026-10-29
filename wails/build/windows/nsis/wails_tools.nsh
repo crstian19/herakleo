@@ -8,7 +8,7 @@
     !define INFO_PROJECTNAME "herakleo"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "Cristian Gutiérrez"
+    !define INFO_COMPANYNAME "Crstian"
 !endif
 !ifndef INFO_PRODUCTNAME
     !define INFO_PRODUCTNAME "Herakleo"
@@ -17,7 +17,7 @@
     !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "© 2026 Cristian Gutiérrez"
+    !define INFO_COPYRIGHT "© 2026 Crstian"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
@@ -124,6 +124,9 @@ RequestExecutionLevel "${REQUEST_EXECUTION_LEVEL}"
 
     SetRegView 64
     !if "${WAILS_INSTALL_SCOPE}" == "user"
+        ; Builds up to 0.2.0 registered under the author's full name: drop that
+        ; entry so Apps & features doesn't list Herakleo twice after an upgrade.
+        DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Cristian Gutiérrez${INFO_PRODUCTNAME}"
         WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "${INFO_COMPANYNAME}"
         WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
         WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
