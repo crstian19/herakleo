@@ -24,7 +24,7 @@
 and watch it in mpv or VLC.</p>
 
 <p align="center">
-  <img src="docs/images/herakleo-channels.png" alt="Herakleo channel grid with a list of demo channels, the group list on the left and the search box at the top" width="800">
+  <img src="docs/images/herakleo-channels.png" alt="Herakleo channel grid with demo channels showing what is on now, the Live TV, Movies and Series tabs, the lists and groups on the left" width="800">
 </p>
 
 ## Features
