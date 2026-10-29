@@ -25,7 +25,6 @@ func waitHits(hits *atomic.Int32, n int32) {
 }
 
 func TestTelemetryOnByDefault(t *testing.T) {
-	t.Setenv("DO_NOT_TRACK", "")
 	hits, url := pingServer(t)
 	a := newApp(t)
 	a.telemetryURL = url
@@ -66,28 +65,6 @@ func TestTelemetryOnByDefault(t *testing.T) {
 	bad := "maybe"
 	if _, err := a.UpdateSettings(library.SettingsPatch{Telemetry: &bad}); err == nil {
 		t.Error("invalid telemetry value accepted")
-	}
-}
-
-func TestDoNotTrack(t *testing.T) {
-	hits, url := pingServer(t)
-	a := newApp(t)
-	a.telemetryURL = url
-	for _, v := range []string{"1", "true", "yes"} {
-		t.Setenv("DO_NOT_TRACK", v)
-		a.ping(true)
-		if got := a.GetSettings().Telemetry; got != "dnt" {
-			t.Errorf("DO_NOT_TRACK=%s: settings say %q", v, got)
-		}
-	}
-	if hits.Load() != 0 {
-		t.Errorf("DO_NOT_TRACK ignored: %d pings", hits.Load())
-	}
-	for _, v := range []string{"0", "false", ""} {
-		t.Setenv("DO_NOT_TRACK", v)
-		if doNotTrack() {
-			t.Errorf("DO_NOT_TRACK=%q must not opt out", v)
-		}
 	}
 }
 

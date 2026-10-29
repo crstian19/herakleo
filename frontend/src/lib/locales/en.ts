@@ -292,7 +292,6 @@ const en: Messages = {
   "err.episode_not_found": "Episode not found: open the series again.",
   "settings.privacy": "Privacy",
   "settings.telemetry": "Send anonymous usage statistics",
-  "settings.telemetryDnt": "Turned off by the DO_NOT_TRACK variable on your system.",
   "settings.telemetryHint": "This is all that is stored: once a day, the version, system, language and a random ID for this install. Never your lists, channels or what you watch.",
   "telemetry.what": "What is sent",
   "toast.telemetryOn": "Anonymous statistics on",

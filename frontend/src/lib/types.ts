@@ -140,8 +140,8 @@ export interface AppSettings extends PlaybackOptions {
   cacheChoices: number[];
   dataDir: string;
   version: string;
-  /** Anonymous usage statistics: on by default; "dnt" when DO_NOT_TRACK turns them off. */
-  telemetry: "on" | "off" | "dnt";
+  /** Anonymous usage statistics: on by default, "off" when turned off in Settings. */
+  telemetry: "on" | "off";
 }
 
 export interface SettingsPatch extends Partial<PlaybackOptions> {

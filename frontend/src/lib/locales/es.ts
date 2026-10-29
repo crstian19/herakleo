@@ -294,7 +294,6 @@ const es = {
   "err.episode_not_found": "No se encontró el episodio: abre la serie otra vez.",
   "settings.privacy": "Privacidad",
   "settings.telemetry": "Enviar estadísticas de uso anónimas",
-  "settings.telemetryDnt": "Desactivadas por la variable DO_NOT_TRACK de tu sistema.",
   "settings.telemetryHint": "Es lo único que se guarda: una vez al día, la versión, el sistema, el idioma y un identificador aleatorio de esta instalación. Nunca tus listas, canales ni lo que ves.",
   "telemetry.what": "Qué se envía",
   "toast.telemetryOn": "Estadísticas anónimas activadas",

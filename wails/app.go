@@ -42,11 +42,11 @@ func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error 
 
 // ping sends the usage event when telemetry is on and the last one is older
 // than telemetry.Interval (or always, with force). It is on by default; off
-// in Settings or with DO_NOT_TRACK=1 (consoledonottrack.com) it sends nothing.
+// in Settings it sends nothing.
 // Failures are silent: a stats server being down must never bother the user.
 func (a *App) ping(force bool) {
 	s := a.lib.Settings()
-	if !s.TelemetryEnabled() || doNotTrack() || (!force && time.Since(time.Unix(s.LastPing, 0)) < telemetry.Interval) {
+	if !s.TelemetryEnabled() || (!force && time.Since(time.Unix(s.LastPing, 0)) < telemetry.Interval) {
 		return
 	}
 	id, err := a.lib.TelemetryInstall(telemetry.NewInstallID)
@@ -77,18 +77,10 @@ func systemLanguage() string {
 }
 
 func telemetryView(s library.Settings) string {
-	switch {
-	case doNotTrack():
-		return "dnt"
-	case s.TelemetryEnabled():
+	if s.TelemetryEnabled() {
 		return library.TelemetryOn
 	}
 	return library.TelemetryOff
-}
-
-func doNotTrack() bool {
-	v := os.Getenv("DO_NOT_TRACK")
-	return v != "" && v != "0" && !strings.EqualFold(v, "false")
 }
 
 func inFlatpak() bool {
@@ -217,7 +209,7 @@ type SettingsView struct {
 	Volume           int           `json:"volume"`
 	CacheChoices     []int         `json:"cacheChoices"`
 	Version          string        `json:"version"`
-	// Telemetry is "on" or "off"; "dnt" when DO_NOT_TRACK turns it off.
+	// Telemetry is "on" or "off".
 	Telemetry string `json:"telemetry"`
 	// Where library.json lives, with the home folder shown as ~ outside Windows.
 	DataDir string `json:"dataDir"`

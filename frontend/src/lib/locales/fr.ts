@@ -294,7 +294,6 @@ const fr: Messages = {
   "err.episode_not_found": "Épisode introuvable : rouvrez la série.",
   "settings.privacy": "Confidentialité",
   "settings.telemetry": "Envoyer des statistiques d’utilisation anonymes",
-  "settings.telemetryDnt": "Désactivées par la variable DO_NOT_TRACK de votre système.",
   "settings.telemetryHint": "C’est tout ce qui est conservé : une fois par jour, la version, le système, la langue et un identifiant aléatoire de cette installation. Jamais vos listes, vos chaînes ni ce que vous regardez.",
   "telemetry.what": "Ce qui est envoyé",
   "toast.telemetryOn": "Statistiques anonymes activées",
