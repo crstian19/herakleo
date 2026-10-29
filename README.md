@@ -135,7 +135,7 @@ which you can turn off (see [Telemetry](#telemetry)).
 
 To know how many people use Herakleo and on which systems, it sends anonymous usage statistics. They
 are on by default; turn them off in **Settings → Privacy**, or set `DO_NOT_TRACK=1` in your
-environment ([consoledonottrack.com](https://consoledonottrack.com)) and it sends nothing.
+environment, and it sends nothing.
 
 It sends one event a day at most to [Umami](https://umami.is), a privacy-focused analytics tool run
 by the author at `umami.crstian.me`. This is all that is stored:
