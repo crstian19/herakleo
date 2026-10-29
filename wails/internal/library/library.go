@@ -113,7 +113,20 @@ type Settings struct {
 	SoftwareDecoding bool `json:"softwareDecoding"`
 	CacheSecs        int  `json:"cacheSecs"`
 	Volume           int  `json:"volume"`
+	// Telemetry is "" until the user answers the first-launch question,
+	// then TelemetryOn or TelemetryOff.
+	Telemetry string `json:"telemetry,omitempty"`
+	// InstallID is the random ID pings carry; cleared when telemetry is off.
+	InstallID string `json:"installId,omitempty"`
+	// LastPing is unix seconds of the last ping sent.
+	LastPing int64 `json:"lastPing,omitempty"`
 }
+
+// Telemetry answers.
+const (
+	TelemetryOn  = "on"
+	TelemetryOff = "off"
+)
 
 // Library is safe for concurrent use; Wails calls bound methods from many goroutines.
 type Library struct {
@@ -479,6 +492,8 @@ type SettingsPatch struct {
 	SoftwareDecoding *bool   `json:"softwareDecoding,omitempty"`
 	CacheSecs        *int    `json:"cacheSecs,omitempty"`
 	Volume           *int    `json:"volume,omitempty"`
+	// Telemetry is TelemetryOn or TelemetryOff; the caller validates it.
+	Telemetry *string `json:"telemetry,omitempty"`
 }
 
 // UpdateSettings applies a patch; the caller validates the player ID and options.
@@ -501,7 +516,41 @@ func (l *Library) UpdateSettings(p SettingsPatch) (Settings, error) {
 	if p.Volume != nil {
 		l.settings.Volume = *p.Volume
 	}
+	if p.Telemetry != nil {
+		l.settings.Telemetry = *p.Telemetry
+		if *p.Telemetry != TelemetryOn {
+			// Saying no forgets the ID: saying yes later starts a new one.
+			l.settings.InstallID, l.settings.LastPing = "", 0
+		}
+	}
 	return l.settings, l.saveState()
+}
+
+// TelemetryInstall returns the install ID for pings, creating it with newID
+// the first time, or "" when telemetry is not on.
+func (l *Library) TelemetryInstall(newID func() string) (string, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.syncLocked()
+	if l.settings.Telemetry != TelemetryOn {
+		return "", nil
+	}
+	if l.settings.InstallID == "" {
+		l.settings.InstallID = newID()
+		if err := l.saveState(); err != nil {
+			return "", err
+		}
+	}
+	return l.settings.InstallID, nil
+}
+
+// SetLastPing records when a ping was sent.
+func (l *Library) SetLastPing(at int64) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.syncLocked()
+	l.settings.LastPing = at
+	return l.saveState()
 }
 
 // StreamURL resolves a channel ID to its stream, for the player.

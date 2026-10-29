@@ -292,6 +292,16 @@ const fr: Messages = {
   "err.not_playable": "C’est une série : choisissez un épisode.",
   "err.not_a_series": "Ce n’est pas une série.",
   "err.episode_not_found": "Épisode introuvable : rouvrez la série.",
+  "settings.privacy": "Confidentialité",
+  "settings.telemetry": "Envoyer des statistiques d’utilisation anonymes",
+  "settings.telemetryHint": "Une fois par jour : version, système, langue et un identifiant aléatoire. Jamais vos listes, vos chaînes ni ce que vous regardez.",
+  "telemetry.title": "Aider avec des statistiques anonymes ?",
+  "telemetry.body": "Savoir combien de personnes utilisent Herakleo, et sur quels systèmes, aide à l’améliorer. Seulement la version, le système, la langue et un identifiant aléatoire ; rien sur vos listes ni ce que vous regardez. Modifiable dans les Réglages.",
+  "telemetry.what": "Ce qui est envoyé",
+  "telemetry.yes": "Oui, envoyer",
+  "telemetry.no": "Non, merci",
+  "toast.telemetryOn": "Merci : des statistiques anonymes seront envoyées",
+  "toast.telemetryOff": "Aucune statistique ne sera envoyée",
 };
 
 export default fr;

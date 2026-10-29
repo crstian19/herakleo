@@ -31,6 +31,7 @@
   import SourceDialog from "./lib/SourceDialog.svelte";
   import GuideDialog from "./lib/GuideDialog.svelte";
   import SeriesDialog from "./lib/SeriesDialog.svelte";
+  import TelemetryPrompt from "./lib/TelemetryPrompt.svelte";
 
   const PAGE = 120; // cards fetched per load in scroll mode
   const PAGE_SIZE = 60; // cards per page in pagination mode (the default)
@@ -71,6 +72,8 @@
     { media: "series", label: "media.series" },
   ];
   let seriesFor = $state<Channel | null>(null);
+  // First-launch question about anonymous statistics; never during a benchmark.
+  let askTelemetry = $state(false);
   let group = $state("");
   let listView = $state<ChannelView>("");
   let searchInput = $state("");
@@ -412,6 +415,7 @@
       const bench = await api.benchMode();
       if (bench === "full") return benchUnattended();
       if (bench.startsWith("wheel")) return wheelSession(bench.split(":")[1] ?? "baseline");
+      askTelemetry = appSettings?.telemetry === "";
       if (appSettings?.refreshOnStart) await refreshAll();
       reminders = await api.listReminders().catch(() => []);
       checkReminders();
@@ -1217,6 +1221,15 @@
 
 {#if helpOpen}
   <ShortcutsHelp onclose={() => (helpOpen = false)} />
+{/if}
+
+{#if askTelemetry}
+  <TelemetryPrompt
+    onanswer={(on) => {
+      askTelemetry = false;
+      changeSettings({ telemetry: on ? "on" : "off" }, () => t(on ? "toast.telemetryOn" : "toast.telemetryOff"));
+    }}
+  />
 {/if}
 
 {#if seriesFor}

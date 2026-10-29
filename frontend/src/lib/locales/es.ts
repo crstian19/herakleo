@@ -292,6 +292,16 @@ const es = {
   "err.not_playable": "Es una serie: elige un episodio.",
   "err.not_a_series": "No es una serie.",
   "err.episode_not_found": "No se encontró el episodio: abre la serie otra vez.",
+  "settings.privacy": "Privacidad",
+  "settings.telemetry": "Enviar estadísticas de uso anónimas",
+  "settings.telemetryHint": "Una vez al día: versión, sistema, idioma y un identificador aleatorio. Nunca tus listas, canales ni lo que ves.",
+  "telemetry.title": "¿Ayudas con estadísticas anónimas?",
+  "telemetry.body": "Saber cuánta gente usa Herakleo y en qué sistemas ayuda a mejorarlo. Solo versión, sistema, idioma y un identificador aleatorio; nada de tus listas ni de lo que ves. Puedes cambiarlo en Ajustes.",
+  "telemetry.what": "Qué se envía",
+  "telemetry.yes": "Sí, enviar",
+  "telemetry.no": "No, gracias",
+  "toast.telemetryOn": "Gracias: se enviarán estadísticas anónimas",
+  "toast.telemetryOff": "No se enviará ninguna estadística",
 } as const;
 
 export default es;

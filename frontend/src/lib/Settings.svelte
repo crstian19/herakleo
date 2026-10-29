@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type AppSettings, type PlaybackOptions, type SettingsPatch, type SourceInfo } from "./api";
+  import { api, type AppSettings, type PlaybackOptions, type SettingsPatch, type SourceInfo } from "./api";
   import { ago, currentLocale, date, localeNames, setLanguage, systemLocale, t, type Locale, type MessageKey } from "./i18n.svelte";
   import { accents, prefs, savePrefs, setAccent, setEffects } from "./prefs.svelte";
 
@@ -407,6 +407,27 @@
     <h3 class="section-title mb-1">{t("settings.perf")}</h3>
     <p class="mb-4 text-sm text-muted">{t("settings.perfHint")}</p>
     <button class="btn-ghost" onclick={onperf}>{t("settings.perfRun")}</button>
+  </section>
+
+  <section>
+    <h3 class="section-title mb-1">{t("settings.privacy")}</h3>
+    <p class="mb-3 text-sm text-muted">
+      {t("settings.telemetryHint")}
+      <button class="text-accent hover:underline" onclick={() => api.openLink("telemetry")}>{t("telemetry.what")}</button>
+    </p>
+    <label class="flex cursor-pointer items-center gap-3 px-1 text-sm">
+      <input
+        type="checkbox"
+        class="size-4 accent-accent"
+        checked={settings?.telemetry === "on"}
+        disabled={!settings}
+        onchange={(e) => {
+          const on = e.currentTarget.checked;
+          onsettings({ telemetry: on ? "on" : "off" }, () => t(on ? "toast.telemetryOn" : "toast.telemetryOff"));
+        }}
+      />
+      {t("settings.telemetry")}
+    </label>
   </section>
 
   <section>
