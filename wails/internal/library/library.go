@@ -128,7 +128,7 @@ const (
 	TelemetryOff = "off"
 )
 
-// TelemetryEnabled: statistics are on unless turned off in Settings.
+// TelemetryEnabled reports whether statistics are on: they are unless turned off in Settings.
 func (s Settings) TelemetryEnabled() bool { return s.Telemetry != TelemetryOff }
 
 // Library is safe for concurrent use; Wails calls bound methods from many goroutines.
