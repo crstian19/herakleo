@@ -42,7 +42,7 @@ func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error 
 
 // ping sends the usage event when telemetry is on and the last one is older
 // than telemetry.Interval (or always, with force). It is on by default; off
-// in Settings or with DO_NOT_TRACK=1 (consoledonottrack.com) it sends nothing.
+// in Settings or with DO_NOT_TRACK=1 it sends nothing.
 // Failures are silent: a stats server being down must never bother the user.
 func (a *App) ping(force bool) {
 	s := a.lib.Settings()
