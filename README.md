@@ -48,7 +48,8 @@ and watch it in mpv or VLC.</p>
   system, and six accent colours.
 - **Light on old machines**: visual effects can be turned off, and the grid can page (default) or
   scroll infinitely.
-- Everything stays on your machine (the folder is shown in Settings). No accounts, no telemetry.
+- Everything stays on your machine (the folder is shown in Settings). No accounts; anonymous usage
+  statistics you can turn off in one click ([what is sent](#telemetry)).
 
 ## Install
 
@@ -127,7 +128,26 @@ Celluloid, Haruna or IINA). Those players handle every codec IPTV providers use,
 small.
 
 **Where are my lists and passwords stored?** Only on your computer, in a file only your user can
-read. Settings shows the folder. Herakleo has no accounts and sends no telemetry.
+read. Settings shows the folder. Herakleo has no accounts. It sends anonymous usage statistics,
+which you can turn off (see [Telemetry](#telemetry)).
+
+## Telemetry
+
+To know how many people use Herakleo and on which systems, it sends anonymous usage statistics. They
+are on by default; turn them off in **Settings → Privacy**, or set `DO_NOT_TRACK=1` in your
+environment ([consoledonottrack.com](https://consoledonottrack.com)) and it sends nothing.
+
+It sends one event a day at most to [Umami](https://umami.is), a privacy-focused analytics tool run
+by the author at `umami.crstian.me`. This is all that is stored:
+
+- the Herakleo version, the operating system and architecture, and whether it runs as a Flatpak;
+- the desktop language (e.g. `es-ES`);
+- a random install ID, made up on your machine, so that one person opening the app every day counts
+  once. Turning statistics off deletes it; turning them on again creates a new one.
+
+It never includes your lists, channels, URLs, accounts or anything you watch. Your IP address reaches
+the server like with any web request; Umami uses it for the country and does not store it. The code
+is in [`wails/internal/telemetry`](wails/internal/telemetry/telemetry.go).
 
 ## Support
 

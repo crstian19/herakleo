@@ -292,6 +292,13 @@ const es = {
   "err.not_playable": "Es una serie: elige un episodio.",
   "err.not_a_series": "No es una serie.",
   "err.episode_not_found": "No se encontró el episodio: abre la serie otra vez.",
+  "settings.privacy": "Privacidad",
+  "settings.telemetry": "Enviar estadísticas de uso anónimas",
+  "settings.telemetryDnt": "Desactivadas por la variable DO_NOT_TRACK de tu sistema.",
+  "settings.telemetryHint": "Es lo único que se guarda: una vez al día, la versión, el sistema, el idioma y un identificador aleatorio de esta instalación. Nunca tus listas, canales ni lo que ves.",
+  "telemetry.what": "Qué se envía",
+  "toast.telemetryOn": "Estadísticas anónimas activadas",
+  "toast.telemetryOff": "No se enviará ninguna estadística",
 } as const;
 
 export default es;

@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/crstian19/herakleo/wails/internal/library"
 	"github.com/crstian19/herakleo/wails/internal/player"
 	"github.com/crstian19/herakleo/wails/internal/playlist"
+	"github.com/crstian19/herakleo/wails/internal/telemetry"
 )
 
 // App is a Wails service: every exported method is callable from the
@@ -24,6 +26,74 @@ import (
 type App struct {
 	lib    *library.Library
 	player player.Player
+	// telemetryURL is where pings go; telemetry.Endpoint unless a test sets it.
+	telemetryURL string
+}
+
+// ServiceStartup sends the daily ping (unless turned off) a few seconds after
+// start, so it never competes with loading the window.
+func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error { //nolint:unparam // Wails' service interface
+	go func() {
+		time.Sleep(5 * time.Second)
+		a.ping(false)
+	}()
+	return nil
+}
+
+// ping sends the usage event when telemetry is on and the last one is older
+// than telemetry.Interval (or always, with force). It is on by default; off
+// in Settings or with DO_NOT_TRACK=1 (consoledonottrack.com) it sends nothing.
+// Failures are silent: a stats server being down must never bother the user.
+func (a *App) ping(force bool) {
+	s := a.lib.Settings()
+	if !s.TelemetryEnabled() || doNotTrack() || (!force && time.Since(time.Unix(s.LastPing, 0)) < telemetry.Interval) {
+		return
+	}
+	id, err := a.lib.TelemetryInstall(telemetry.NewInstallID)
+	if err != nil || id == "" {
+		return
+	}
+	endpoint := a.telemetryURL
+	if endpoint == "" {
+		endpoint = telemetry.Endpoint
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	e := telemetry.Event{Version: Version, InstallID: id, Language: systemLanguage(), Flatpak: inFlatpak()}
+	if telemetry.Send(ctx, endpoint, e) == nil {
+		_ = a.lib.SetLastPing(time.Now().Unix())
+	}
+}
+
+// systemLanguage is the desktop locale as a BCP 47 tag ("es-ES"), or "".
+func systemLanguage() string {
+	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		if v := os.Getenv(k); v != "" && v != "C" && v != "POSIX" {
+			v, _, _ = strings.Cut(v, ".")
+			return strings.ReplaceAll(v, "_", "-")
+		}
+	}
+	return ""
+}
+
+func telemetryView(s library.Settings) string {
+	switch {
+	case doNotTrack():
+		return "dnt"
+	case s.TelemetryEnabled():
+		return library.TelemetryOn
+	}
+	return library.TelemetryOff
+}
+
+func doNotTrack() bool {
+	v := os.Getenv("DO_NOT_TRACK")
+	return v != "" && v != "0" && !strings.EqualFold(v, "false")
+}
+
+func inFlatpak() bool {
+	_, err := os.Stat("/.flatpak-info")
+	return err == nil
 }
 
 // ServiceShutdown runs when the app quits: never leave a player behind.
@@ -147,6 +217,8 @@ type SettingsView struct {
 	Volume           int           `json:"volume"`
 	CacheChoices     []int         `json:"cacheChoices"`
 	Version          string        `json:"version"`
+	// Telemetry is "on" or "off"; "dnt" when DO_NOT_TRACK turns it off.
+	Telemetry string `json:"telemetry"`
 	// Where library.json lives, with the home folder shown as ~ outside Windows.
 	DataDir string `json:"dataDir"`
 }
@@ -157,7 +229,7 @@ func (a *App) GetSettings() SettingsView {
 		Player: a.playerID(), Players: player.Available(), RefreshOnStart: s.RefreshOnStart,
 		SoftwareDecoding: s.SoftwareDecoding, CacheSecs: s.CacheSecs, Volume: s.Volume,
 		CacheChoices: player.CacheChoices, DataDir: displayDir(a.lib.Dir()),
-		Version: Version,
+		Version: Version, Telemetry: telemetryView(s),
 	}
 }
 
@@ -166,6 +238,9 @@ func (a *App) GetSettings() SettingsView {
 func (a *App) UpdateSettings(patch library.SettingsPatch) (SettingsView, error) {
 	if patch.Player != nil && !player.Known(*patch.Player) {
 		return SettingsView{}, fmt.Errorf("unknown_player: %s", *patch.Player)
+	}
+	if t := patch.Telemetry; t != nil && *t != library.TelemetryOn && *t != library.TelemetryOff {
+		return SettingsView{}, fmt.Errorf("invalid_option: telemetry %q", *t)
 	}
 	next := playerOptions(a.lib.Settings())
 	if patch.CacheSecs != nil {
@@ -179,6 +254,9 @@ func (a *App) UpdateSettings(patch library.SettingsPatch) (SettingsView, error) 
 	}
 	if _, err := a.lib.UpdateSettings(patch); err != nil {
 		return SettingsView{}, err
+	}
+	if patch.Telemetry != nil && *patch.Telemetry == library.TelemetryOn {
+		go a.ping(true) // turned back on: count it now, with its new install ID
 	}
 	return a.GetSettings(), nil
 }
@@ -335,6 +413,8 @@ var projectLinks = map[string]string{
 	"sponsors": "https://github.com/sponsors/crstian19",
 	"kofi":     "https://ko-fi.com/crstian",
 	"paypal":   "https://paypal.me/CrstianG",
+	// What the usage statistics send.
+	"telemetry": "https://github.com/crstian19/herakleo#telemetry",
 }
 
 // OpenLink opens one of projectLinks in the default browser.

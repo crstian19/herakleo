@@ -291,6 +291,13 @@ const it: Messages = {
   "err.not_playable": "È una serie: scegli un episodio.",
   "err.not_a_series": "Non è una serie.",
   "err.episode_not_found": "Episodio non trovato: riapri la serie.",
+  "settings.privacy": "Privacy",
+  "settings.telemetry": "Invia statistiche d’uso anonime",
+  "settings.telemetryDnt": "Disattivate dalla variabile DO_NOT_TRACK del tuo sistema.",
+  "settings.telemetryHint": "È l’unica cosa che si conserva: una volta al giorno, versione, sistema, lingua e un ID casuale di questa installazione. Mai le tue liste, i canali o cosa guardi.",
+  "telemetry.what": "Cosa viene inviato",
+  "toast.telemetryOn": "Statistiche anonime attivate",
+  "toast.telemetryOff": "Non verrà inviata alcuna statistica",
 };
 
 export default it;
