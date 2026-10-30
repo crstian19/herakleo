@@ -23,6 +23,10 @@
 <b>M3U / M3U8 playlist</b> or an <b>Xtream Codes</b> account, find a channel among tens of thousands,
 and watch it in mpv or VLC.</p>
 
+
+https://github.com/user-attachments/assets/5591a0ab-ec53-4ec1-80bf-9c6c1567f850
+
+
 <p align="center">
   <img src="docs/images/herakleo-channels.png" alt="Herakleo channel grid with demo channels showing what is on now, the Live TV, Movies and Series tabs, the lists and groups on the left" width="800">
 </p>
