@@ -63,8 +63,8 @@ an external player, so install one too: [mpv](https://mpv.io) is the default.
 | Ubuntu 24.04+, Debian 13+ | `herakleo_*_amd64.deb` | `sudo apt install ./herakleo_*_amd64.deb` |
 | Fedora 39+ | `herakleo-*.x86_64.rpm` | `sudo dnf install ./herakleo-*.x86_64.rpm` |
 | Any Linux | `herakleo-*.flatpak` | `flatpak install --user herakleo-*.flatpak` (players still come from the system) |
-| Windows 10/11 | `herakleo-*-setup.exe`, or the `.zip` | Unsigned: on the SmartScreen warning, click *More info* → *Run anyway* |
-| macOS 12+ | `herakleo-*-macos-universal.dmg` | Unsigned: see below |
+| Windows 10/11 | [Scoop](https://scoop.sh): `scoop bucket add crstian19 https://github.com/crstian19/scoop-bucket` then `scoop install crstian19/herakleo`; or `herakleo-*-setup.exe` / the `.zip` from the release | Unsigned installer: on the SmartScreen warning, click *More info* → *Run anyway* |
+| macOS 12+ | [Homebrew](https://brew.sh): `brew install --cask crstian19/tap/herakleo`; or `herakleo-*-macos-universal.dmg` from the release | Unsigned: see below |
 
 Players are found on `PATH` and in their usual install folders (`Program Files` on Windows,
 `/Applications` and Homebrew on macOS). On Windows, `scoop install mpv` or the
