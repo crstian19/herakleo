@@ -15,7 +15,7 @@ import (
 
 // Version is the release version; `just bump` sets it and the release
 // workflow checks it against the tag.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // Built by `bun run build:wails` in ../frontend.
 //
