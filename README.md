@@ -141,8 +141,8 @@ To know how many people use Herakleo and on which systems, it sends anonymous us
 are on by default; turn them off in **Settings → Privacy**, or set `DO_NOT_TRACK=1` in your
 environment, and it sends nothing.
 
-It sends one event a day at most to [Umami](https://umami.is), a privacy-focused analytics tool run
-by the author at `umami.crstian.me`. This is all that is stored:
+It sends an `install` event the first time and then one `launch` event a day at most to
+[Umami](https://umami.is), a privacy-focused analytics tool run by the author at `umami.crstian.me`. This is all that is stored:
 
 - the Herakleo version, the operating system and architecture, and whether it runs as a Flatpak;
 - the desktop language (e.g. `es-ES`);

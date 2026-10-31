@@ -1,6 +1,6 @@
 // Package telemetry sends the anonymous usage ping (on by default, off in
-// Settings or with DO_NOT_TRACK): one "launch"
-// event a day to the author's Umami, with the app version, OS, architecture,
+// Settings or with DO_NOT_TRACK): one "install" event the first time, then one
+// "launch" event a day to the author's Umami, with the app version, OS, architecture,
 // UI language and a random install ID. Never lists, channels or URLs. What it
 // sends is documented in the README ("Telemetry"); keep both in step.
 package telemetry
@@ -27,8 +27,18 @@ const (
 	hostname = "herakleo.crstian.me"
 )
 
+// Event names.
+const (
+	// Install is sent once, the first time an install ID pings.
+	Install = "install"
+	// Launch is sent at most once a day.
+	Launch = "launch"
+)
+
 // Event is what one ping says.
 type Event struct {
+	// Name is Install or Launch; empty means Launch.
+	Name      string
 	Version   string
 	InstallID string
 	Language  string
@@ -60,7 +70,10 @@ func Body(e Event) ([]byte, error) {
 	p.Payload.URL = "/app"
 	p.Payload.Title = "Herakleo"
 	p.Payload.Language = e.Language
-	p.Payload.Name = "launch"
+	p.Payload.Name = e.Name
+	if p.Payload.Name == "" {
+		p.Payload.Name = Launch
+	}
 	// Umami counts one visitor per ID: one per install, not per IP.
 	p.Payload.ID = e.InstallID
 	p.Payload.Data = map[string]string{
