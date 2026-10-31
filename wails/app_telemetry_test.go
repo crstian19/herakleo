@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +19,44 @@ func pingServer(t *testing.T) (*atomic.Int32, string) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hits.Add(1) }))
 	t.Cleanup(srv.Close)
 	return &hits, srv.URL
+}
+
+// eventServer records the name of each event it gets.
+func eventServer(t *testing.T) (func() []string, string) {
+	t.Helper()
+	var mu sync.Mutex
+	var names []string
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Payload struct {
+				Name string `json:"name"`
+			} `json:"payload"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		mu.Lock()
+		names = append(names, body.Payload.Name)
+		mu.Unlock()
+	}))
+	t.Cleanup(srv.Close)
+	return func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(names)
+	}, srv.URL
+}
+
+func TestInstallEventOnlyOnce(t *testing.T) {
+	t.Setenv("DO_NOT_TRACK", "")
+	events, url := eventServer(t)
+	a := newApp(t)
+	a.telemetryURL = url
+
+	a.ping(false)
+	a.ping(true)
+	want := []string{"install", "launch", "launch"}
+	if got := events(); !slices.Equal(got, want) {
+		t.Errorf("events %v, want %v", got, want)
+	}
 }
 
 func waitHits(hits *atomic.Int32, n int32) {
@@ -33,13 +74,14 @@ func TestTelemetryOnByDefault(t *testing.T) {
 	if v := a.GetSettings(); v.Telemetry != library.TelemetryOn {
 		t.Fatalf("default: %q", v.Telemetry)
 	}
+	// First launch: install + launch.
 	a.ping(false)
-	if hits.Load() != 1 || a.lib.Settings().InstallID == "" {
+	if hits.Load() != 2 || a.lib.Settings().InstallID == "" {
 		t.Fatalf("first launch: %d pings, %+v", hits.Load(), a.lib.Settings())
 	}
 	// At most one a day.
 	a.ping(false)
-	if hits.Load() != 1 {
+	if hits.Load() != 2 {
 		t.Errorf("second ping the same day: %d", hits.Load())
 	}
 
@@ -49,17 +91,17 @@ func TestTelemetryOnByDefault(t *testing.T) {
 		t.Fatalf("%+v, %v", v, err)
 	}
 	a.ping(true)
-	if hits.Load() != 1 || a.lib.Settings().InstallID != "" {
+	if hits.Load() != 2 || a.lib.Settings().InstallID != "" {
 		t.Errorf("after turning it off: %d pings, %+v", hits.Load(), a.lib.Settings())
 	}
 
-	// Back on: counted at once, with a new ID.
+	// Back on: counted at once, with a new ID (so install + launch again).
 	on := library.TelemetryOn
 	if _, err := a.UpdateSettings(library.SettingsPatch{Telemetry: &on}); err != nil {
 		t.Fatal(err)
 	}
-	waitHits(hits, 2)
-	if hits.Load() != 2 {
+	waitHits(hits, 4)
+	if hits.Load() != 4 {
 		t.Errorf("after turning it back on: %d pings", hits.Load())
 	}
 

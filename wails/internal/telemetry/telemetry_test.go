@@ -36,6 +36,13 @@ func TestBodyCarriesOnlyTheDocumentedFields(t *testing.T) {
 	}
 }
 
+func TestBodyInstallEvent(t *testing.T) {
+	b, err := Body(Event{Name: Install, InstallID: "abc"})
+	if err != nil || !strings.Contains(string(b), `"name":"install"`) {
+		t.Errorf("%s, %v", b, err)
+	}
+}
+
 func mustJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)

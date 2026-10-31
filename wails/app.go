@@ -60,6 +60,15 @@ func (a *App) ping(force bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	e := telemetry.Event{Version: Version, InstallID: id, Language: systemLanguage(), Flatpak: inFlatpak()}
+	// No ping has gone out with this ID yet: a new install (or statistics
+	// turned back on, which also makes a new ID).
+	if s.LastPing == 0 {
+		e.Name = telemetry.Install
+		if telemetry.Send(ctx, endpoint, e) != nil {
+			return
+		}
+	}
+	e.Name = telemetry.Launch
 	if telemetry.Send(ctx, endpoint, e) == nil {
 		_ = a.lib.SetLastPing(time.Now().Unix())
 	}
