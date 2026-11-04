@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  BUN_VERSION: "1.4.2"
+  BUN_VERSION: "1.4.4"
   # Wails' own X11 code uses APIs deprecated in GTK 4.
   CGO_CFLAGS: -Wno-deprecated-declarations
 
