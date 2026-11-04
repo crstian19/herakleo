@@ -114,7 +114,7 @@ docs/images/       README screenshot
 
 ```bash
 just bump 0.2.0    # app version, PKGBUILD pkgver and AppStream entry
-git commit -am "chore: release v0.2.0" && git tag v0.2.0 && git push --follow-tags
+git commit -am "chore: release v0.2.0" && git tag -a v0.2.0 -m v0.2.0 && git push --follow-tags
 ```
 
 The tag starts [`release.yml`](.github/workflows/release.yml): it builds every package above and

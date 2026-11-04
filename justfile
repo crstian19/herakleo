@@ -88,7 +88,7 @@ bump version:
     grep -q "<release version=\"$v\"" "$meta" \
       || sed -i "s|  <releases>|  <releases>\n    <release version=\"$v\" date=\"$(date +%F)\"/>|" "$meta"
     git diff --stat
-    echo "Next: git commit -am 'chore: release v$v' && git tag v$v && git push --follow-tags"
+    echo "Next: git commit -am 'chore: release v$v' && git tag -a v$v -m v$v && git push --follow-tags"
 
 # End-to-end benchmark of the release build on a copy of a library
 # (window time, first page, in-webview API round-trips, peak RSS)
