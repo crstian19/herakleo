@@ -225,7 +225,7 @@ jobs:
   macos:
     name: macOS
     needs: [version, ui]
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       VERSION: ${{ needs.version.outputs.version }}
       MACOSX_DEPLOYMENT_TARGET: "12.0"
