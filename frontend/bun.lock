@@ -6,7 +6,7 @@
       "name": "herakleo-frontend",
       "dependencies": {
         "@fontsource-variable/geist": "5.3.0",
-        "@wailsio/runtime": "3.0.0",
+        "@wailsio/runtime": "3.1.0",
         "canvas-confetti": "1.9.4",
         "lottie-web": "5.13.0",
       },
@@ -119,7 +119,7 @@
 
     "@vitest/spy": ["@vitest/spy@5.0.5", "", {}, "sha512-lwJRExuH417257Q5wv9QYugN9IMJkoxcrKrYxGPQkBzl7wlNpTUxD/5yNX4ESKVUIShKPgkGchYPFMWOOk0wzw=="],
 
-    "@wailsio/runtime": ["@wailsio/runtime@3.0.0", "", {}, "sha512-NkFJXYWD/4Y3TcHAqfIeST4oybtwv9dVWTmriZTMFbINYiQ2FB3Wr4MjsQ7o0BNynEj2GslmUisNejnixEmLVQ=="],
+    "@wailsio/runtime": ["@wailsio/runtime@3.1.0", "", {}, "sha512-noEAedvRyO8TLCrqhGwzrp+mbMxAIDa2rYmdJQOzvJV9MxgaZeXAJGNBiMiKMTSSy4ESOtQi4VH/5heSzi6ZmA=="],
 
     "acorn": ["acorn@8.19.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw=="],
 
