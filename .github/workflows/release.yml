@@ -275,10 +275,12 @@ jobs:
           path: herakleo-*.dmg
           if-no-files-found: error
 
+  # macOS runners can queue for a long time, so the release (and the AUR)
+  # goes out without waiting for them; publish-macos adds the .dmg after.
   publish:
     name: Publish
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [version, linux, arch, flatpak, windows, macos]
+    needs: [version, linux, arch, flatpak, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -305,7 +307,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: dist
-          pattern: '{linux,arch,flatpak,windows,macos}'
+          pattern: '{linux,arch,flatpak,windows}'
           merge-multiple: true
 
       - name: Checksums
@@ -316,6 +318,30 @@ jobs:
         with:
           files: dist/*
           body_path: notes.md
+
+  publish-macos:
+    name: Publish macOS
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [publish, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos
+          path: dist
+
+      # The .dmg and its line in SHA256SUMS, added to the published release.
+      - name: Upload
+        working-directory: dist
+        run: |
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p SHA256SUMS
+          sha256sum herakleo-*.dmg >> SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber herakleo-*.dmg SHA256SUMS
 
   aur:
     name: AUR
