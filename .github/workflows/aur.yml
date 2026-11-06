@@ -21,7 +21,7 @@ permissions:
 jobs:
   aur:
     name: Publish to the AUR
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container: archlinux:base-devel
     strategy:
       fail-fast: false
