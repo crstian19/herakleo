@@ -61,7 +61,7 @@ mem secs="5":
 package-arch pkgs="herakleo":
     #!/usr/bin/env bash
     set -euo pipefail
-    ver=$(sed -n 's/^pkgver=//p' packaging/arch/herakleo/PKGBUILD)
+    ver=$(sed -n 's/^pkgver=\([0-9][^ #]*\).*/\1/p' packaging/arch/herakleo/PKGBUILD)
     tarball="packaging/arch/herakleo-$ver.tar.gz"
     # Only what git would publish (tracked + untracked, minus .gitignore), so
     # local-only files like profiles/ (sysprof captures hold the environment)
@@ -74,21 +74,6 @@ package-arch pkgs="herakleo":
       (cd "packaging/arch/$pkg" && makepkg -f --noconfirm)
     done
     for pkg in {{ pkgs }}; do ls -1 "$PWD"/packaging/arch/$pkg/$pkg-*.pkg.tar.zst; done
-
-# The release workflow refuses tags whose version differs from these files.
-# Set the release version (app, Arch pkgver, AppStream entry); then commit and tag
-bump version:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    v="{{ version }}"
-    [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must be x.y.z"; exit 1; }
-    sed -i "s/^pkgver=.*/pkgver=$v/; s/^pkgrel=.*/pkgrel=1/" packaging/arch/herakleo/PKGBUILD
-    sed -i "s/^const Version = .*/const Version = \"$v\"/" wails/main.go
-    meta=packaging/linux/me.crstian.Herakleo.metainfo.xml
-    grep -q "<release version=\"$v\"" "$meta" \
-      || sed -i "s|  <releases>|  <releases>\n    <release version=\"$v\" date=\"$(date +%F)\"/>|" "$meta"
-    git diff --stat
-    echo "Next: git commit -am 'chore: release v$v' && git tag -a v$v -m v$v && git push --follow-tags"
 
 # End-to-end benchmark of the release build on a copy of a library
 # (window time, first page, in-webview API round-trips, peak RSS)

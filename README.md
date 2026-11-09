@@ -112,13 +112,18 @@ docs/images/       README screenshot
 
 ## Releases
 
-```bash
-just bump 0.2.0    # app version, PKGBUILD pkgver and AppStream entry
-git commit -am "chore: release v0.2.0" && git tag -a v0.2.0 -m v0.2.0 && git push --follow-tags
-```
+[releaser-pleaser](https://github.com/apricote/releaser-pleaser) keeps a release PR open with the
+next version, computed from the Conventional Commits on `main`: `feat` bumps the minor, `fix` the
+patch, `!` the major. The PR updates `CHANGELOG.md`, the PKGBUILD `pkgver`, `Version` in
+`wails/main.go` and the AppStream `<release>` entry. Renovate commits app dependency and Go
+toolchain updates as `fix(deps)`, so they ship in the next patch release; tooling and CI updates
+are `chore(deps)` and do not.
 
-The tag starts [`release.yml`](.github/workflows/release.yml): it builds every package above and
-publishes them with a `SHA256SUMS` and release notes built from the commits.
+Merging the release PR tags `vX.Y.Z` and creates the GitHub release with the changelog. The tag
+starts [`release.yml`](.github/workflows/release.yml): it builds every package above and attaches
+them with a `SHA256SUMS`. The workflow authenticates as the `crstian19-releaser` GitHub App
+(secrets `RELEASER_APP_CLIENT_ID` and `RELEASER_APP_PRIVATE_KEY`), because a tag pushed with
+`GITHUB_TOKEN` would not start it.
 Running the workflow by hand builds the same packages as artifacts without publishing. Windows and
 macOS assets (icon, manifest, installer script, `Info.plist`) are in `wails/build/`.
 
