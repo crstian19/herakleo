@@ -1,0 +1,80 @@
+name: Releaser Pleaser
+
+# Keeps a release PR open with the next version and the changelog, computed
+# from the Conventional Commits on main. Merging that PR tags vX.Y.Z and
+# creates the GitHub release; the tag then runs the release workflow.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - edited
+      - labeled
+
+concurrency:
+  group: releaser-pleaser
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  RELEASE_BRANCH: releaser-pleaser--branches--main
+  METAINFO: packaging/linux/me.crstian.Herakleo.metainfo.xml
+
+jobs:
+  releaser-pleaser:
+    runs-on: ubuntu-latest
+    steps:
+      # A tag pushed with GITHUB_TOKEN does not trigger other workflows, so the
+      # release would never be built. The crstian19-releaser GitHub App mints a
+      # short-lived token that does, and its key does not expire like a PAT.
+      - name: Generate release token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.RELEASER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      # The version lives in the PKGBUILD and in wails/main.go; both carry an
+      # x-releaser-pleaser-version marker.
+      - name: Run Releaser Pleaser
+        uses: apricote/releaser-pleaser@v0.9.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          extra-files: |
+            packaging/arch/herakleo/PKGBUILD
+            wails/main.go
+
+      # The AppStream metainfo needs a new <release> entry per version, which a
+      # marker cannot add. Commit it to the release PR so the tag (and the AUR
+      # source package built from it) carries it. releaser-pleaser rebuilds the
+      # branch whenever main moves, so this runs again after every push and
+      # the date follows the last update of the PR.
+      - name: Add the AppStream release entry to the release PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          open=$(gh pr list --head "$RELEASE_BRANCH" --state open --json number --jq length)
+          [ "$open" = 1 ] || { echo "No open release PR."; exit 0; }
+          git fetch origin "$RELEASE_BRANCH"
+          git switch -C "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+          version=$(sed -n 's/^pkgver=\([0-9][^ #]*\).*/\1/p' packaging/arch/herakleo/PKGBUILD)
+          if grep -q "<release version=\"$version\"" "$METAINFO"; then
+            echo "The metainfo already has $version."
+            exit 0
+          fi
+          sed -i "s|  <releases>|  <releases>\n    <release version=\"$version\" date=\"$(date -u +%F)\"/>|" "$METAINFO"
+          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git -c user.name="${APP_SLUG}[bot]" \
+              -c user.email="${user_id}+${APP_SLUG}[bot]@users.noreply.github.com" \
+              commit -am "chore(main): add the AppStream entry for $version"
+          git push origin "$RELEASE_BRANCH"

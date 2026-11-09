@@ -13,9 +13,9 @@ import (
 	"github.com/crstian19/herakleo/wails/internal/library"
 )
 
-// Version is the release version; `just bump` sets it and the release
-// workflow checks it against the tag.
-const Version = "0.4.2"
+// Version is the release version. releaser-pleaser sets it in the release PR
+// and the release workflow checks it against the tag.
+const Version = "0.4.2" // x-releaser-pleaser-version
 
 // Built by `bun run build:wails` in ../frontend.
 //
