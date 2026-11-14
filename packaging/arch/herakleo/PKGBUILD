@@ -5,7 +5,7 @@
 # packaging/aur.
 
 pkgname=herakleo
-pkgver=0.4.2 # x-releaser-pleaser-version
+pkgver=0.4.3 # x-releaser-pleaser-version
 pkgrel=1
 pkgdesc='Desktop IPTV player for M3U lists and Xtream Codes'
 arch=('x86_64')
