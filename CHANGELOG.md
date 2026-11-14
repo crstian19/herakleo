@@ -1,0 +1,9 @@
+# Changelog
+
+## [v0.4.3](https://github.com/crstian19/herakleo/releases/tag/v0.4.3)
+
+[Compare to previous version](https://github.com/crstian19/herakleo/compare/v0.4.2...v0.4.3)
+
+### Bug Fixes
+
+- **deps**: update module golang.org/x/image to v0.48.0 (#27) ([7f7b46a](https://github.com/crstian19/herakleo/commit/7f7b46a604bc06ea4e6aae23cf64b629955c2ece))
