@@ -82,6 +82,9 @@ jobs:
             libgtk-4-dev libwebkitgtk-6.0-dev
 
       - uses: actions/checkout@v7
+      # The checkout belongs to another user inside the container; without this
+      # git refuses it and go build cannot stamp the VCS info.
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/download-artifact@v8
         with:
           name: ui
