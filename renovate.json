@@ -1,21 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>crstian19/.github:renovate-config",
-    ":semanticCommits"
+    "github>crstian19/.github:renovate-config"
   ],
   "packageRules": [
     {
-      "description": "Go toolchain and indirect (security) updates change the shipped binary, so they are fixes and cut a patch release. Direct dependencies are already fix(deps); tooling and CI stay chore.",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchDepTypes": [
-        "golang",
-        "toolchain",
-        "indirect"
-      ],
-      "semanticCommitType": "fix"
+      "description": "Hold TypeScript below 7: svelte-check only runs TS 7 with TS 6 installed alongside and the experimental --tsgo flag. Lift this once svelte-check supports TS 7 on its own.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
     }
   ]
 }
