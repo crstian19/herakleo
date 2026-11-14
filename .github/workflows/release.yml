@@ -65,10 +65,26 @@ jobs:
     name: Linux (tar.gz, deb, rpm)
     needs: [version, ui]
     runs-on: ubuntu-26.04
+    # The binary links against the GTK 4 and WebKitGTK of the machine that
+    # builds it. Building inside Ubuntu 24.04, the oldest release with
+    # webkitgtk-6.0, keeps the packages working on 24.04 LTS, Mint 22 and
+    # Debian 13 as well as anything newer. Do not drop the container when the
+    # runner image moves on.
+    container: ubuntu:24.04
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      DEBIAN_FRONTEND: noninteractive
     steps:
+      - name: Install GTK 4, WebKitGTK 6 and the build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git gcc libc6-dev pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev
+
       - uses: actions/checkout@v7
+      # The checkout belongs to another user inside the container; without this
+      # git refuses it and go build cannot stamp the VCS info.
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/download-artifact@v8
         with:
           name: ui
@@ -78,14 +94,18 @@ jobs:
           go-version-file: wails/go.mod
           cache-dependency-path: wails/go.sum
 
-      # Built on Ubuntu 24.04, the oldest release with webkitgtk-6.0, so the
-      # binary runs on it and anything newer.
-      - name: Install GTK 4 and WebKitGTK 6
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
-
       - name: Build
         working-directory: wails
         run: go build -tags production -trimpath -ldflags "-s -w" -o build/bin/herakleo .
+
+      # Fails the release if the binary needs a library or symbol that Ubuntu
+      # 24.04 does not ship.
+      - name: Check the binary links on Ubuntu 24.04
+        working-directory: wails
+        run: |
+          out=$(ldd -r build/bin/herakleo 2>&1)
+          echo "$out"
+          ! echo "$out" | grep -E "not found|undefined symbol"
 
       - name: Package
         run: |
