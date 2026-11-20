@@ -146,6 +146,20 @@ export interface AppSettings extends PlaybackOptions {
   updates: "on" | "off";
 }
 
+/** A player that closed on its own with an error. */
+export interface PlayerExit {
+  player: string;
+  /** Channel name. */
+  title: string;
+  /** Exit code; -1 when killed. */
+  code: number;
+  seconds: number;
+  /** End of the player's output; the stream URL's parts are scrubbed, other URLs cut to scheme://host. */
+  log: string[] | null;
+  /** Unix seconds. */
+  at: number;
+}
+
 /** The newest release and what this install can do about it. */
 export interface UpdateInfo {
   current: string;
@@ -218,6 +232,8 @@ export interface Backend {
   pickPlaylistFile(title: string): Promise<string | null>;
   /** Opens a project link (repo or donation page) in the system browser; IDs only, never URLs. */
   openLink(id: "github" | "sponsors" | "kofi" | "paypal" | "telemetry" | "release"): Promise<void>;
+  /** Calls back when a player closes on its own with an error; returns the unsubscribe. */
+  onPlayerExit(callback: (exit: PlayerExit) => void): () => void;
   /** Asks GitHub for the newest release. */
   checkUpdate(): Promise<UpdateInfo>;
   /** Installs the release the last checkUpdate found ("install" mode only), then the app restarts. */

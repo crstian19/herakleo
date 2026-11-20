@@ -34,6 +34,7 @@ type App struct {
 // ServiceStartup sends the daily ping (unless turned off) a few seconds after
 // start, so it never competes with loading the window.
 func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error { //nolint:unparam // Wails' service interface
+	a.player.SetOnExit(a.playerExited)
 	go a.cleanupUpdate()
 	go func() {
 		time.Sleep(5 * time.Second)

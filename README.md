@@ -43,7 +43,10 @@ https://github.com/user-attachments/assets/5591a0ab-ec53-4ec1-80bf-9c6c1567f850
   channel, and reminders when a show starts. The XMLTV guide comes from the Xtream panel, the M3U
   header (`url-tvg`) or a URL you add.
 - **Plays in your player**: mpv by default; VLC everywhere, Celluloid and Haruna on Linux, IINA
-  on macOS. Stream caching, hardware decoding and start volume can be set from the app.
+  on macOS. Stream caching, hardware decoding and start volume can be set from the app. When a
+  channel opens and the player closes on its own, the app shows the player's error (for example
+  `HTTP error 403`) with a button to copy it; addresses are cut down to the server so passwords
+  never show.
 - **Favourites, history and hiding**: hide channels or whole groups you never watch, keep a list of
   recent channels, back up favourites (they survive re-adding a list).
 - **Keyboard first**: every view works with arrows, Enter and Esc, so a TV remote is enough. Press

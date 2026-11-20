@@ -1,4 +1,4 @@
-import type { AppSettings, Backend, Channel, Episode, MediaType, Programme, Reminder, SourceInfo } from "../types";
+import type { AppSettings, Backend, Channel, Episode, MediaType, PlayerExit, Programme, Reminder, SourceInfo } from "../types";
 
 // In-memory backend for working on the UI in a plain browser (`bun run dev:mock`).
 // Enough groups to exercise the sidebar filter; real lists often have hundreds.
@@ -109,6 +109,18 @@ function guideFor(id: string): Programme[] {
   return out;
 }
 let history: string[] = [];
+const exitListeners = new Set<(e: PlayerExit) => void>();
+function mockExit(title: string) {
+  const e: PlayerExit = {
+    player: "mpv",
+    title,
+    code: 2,
+    seconds: 1,
+    log: ["[curl] HTTP error 403", "Failed to open http://demo.example:8080/…."],
+    at: Math.floor(Date.now() / 1000),
+  };
+  for (const l of exitListeners) l(e);
+}
 
 const settings: AppSettings = {
   player: "mpv",
@@ -186,9 +198,16 @@ export const backend: Backend = {
   },
   listHiddenGroups: () => delay([...hiddenGroups].sort()),
   play: (id) => {
-    if (channels.find((c) => c.id === id)?.container) return Promise.reject("not_playable");
+    const c = channels.find((x) => x.id === id);
+    if (c?.container) return Promise.reject("not_playable");
     history = [id, ...history.filter((x) => x !== id)].slice(0, 50);
+    // Every third channel "closes" like a refused stream.
+    if (c && Number(id.split("-")[1]) % 3 === 0) setTimeout(() => mockExit(c.name), 1500);
     return delay(undefined);
+  },
+  onPlayerExit: (callback) => {
+    exitListeners.add(callback);
+    return () => exitListeners.delete(callback);
   },
   clearHistory: () => {
     history = [];

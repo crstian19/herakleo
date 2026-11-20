@@ -1,5 +1,5 @@
-import { Call } from "@wailsio/runtime";
-import type { Backend } from "../types";
+import { Call, Events } from "@wailsio/runtime";
+import type { Backend, PlayerExit } from "../types";
 
 // Wails v3 calls Go service methods by name ("<package>.<Service>.<Method>")
 // through its runtime. Calling by name keeps the shared frontend free of
@@ -51,6 +51,8 @@ export const backend: Backend = {
   benchMode: () => app().BenchMode(),
   diagnostics: () => app().Diagnostics(),
   openLink: (id) => app().OpenLink(id),
+  // Go→JS events arrive through evaluateJavaScript, not the guarded runtime endpoint.
+  onPlayerExit: (callback) => Events.On("player:exited", (ev) => callback(ev.data as PlayerExit)),
   checkUpdate: () => app().CheckUpdate(),
   installUpdate: () => app().InstallUpdate(),
   benchReport: (report) => app().BenchReport(report),

@@ -150,3 +150,16 @@ func TestRuntimeGuardChunked(t *testing.T) {
 		t.Fatalf("absurd chunk total: code %d called %v", w.Code, rec.called)
 	}
 }
+
+// Event payloads over 8 KiB (a player.Exit with long lines) are fetched by
+// the page from /wails/eventpayload/<id>: the guard must let that through.
+func TestRuntimeGuardLetsEventPayloadsThrough(t *testing.T) {
+	next := &recorder{}
+	h := guardRuntime(next)
+	req := httptest.NewRequest(http.MethodGet, "/wails/eventpayload/abc123", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code == http.StatusForbidden || !next.called {
+		t.Fatalf("status %d, reached Wails: %v", w.Code, next.called)
+	}
+}
