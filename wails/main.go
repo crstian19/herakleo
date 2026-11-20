@@ -38,11 +38,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	svc := &App{lib: lib}
 
 	app := application.New(application.Options{
 		Name:     "Herakleo",
 		Icon:     icon,
-		Services: []application.Service{application.NewService(&App{lib: lib})},
+		Services: []application.Service{application.NewService(svc)},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 			// The webview may only call App's methods (runtimeguard.go), not
@@ -57,6 +58,13 @@ func main() {
 			ApplicationID: "me.crstian.Herakleo",
 		},
 		Mac: application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		// After an update, start the new version once this one has shut down.
+		// Not after Run: on macOS, Run never returns (AppKit exits the process).
+		PostShutdown: func() {
+			if err := svc.restartAfterUpdate(); err != nil {
+				log.Printf("restart after update: %v", err)
+			}
+		},
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{

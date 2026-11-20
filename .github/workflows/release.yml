@@ -320,6 +320,13 @@ jobs:
         working-directory: dist
         run: sha256sum * > SHA256SUMS && cat SHA256SUMS
 
+      # The in-app updater installs only files listed in a SHA256SUMS signed
+      # with this key (public half in wails/internal/update/verify.go).
+      - name: Sign checksums
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: scripts/sign-sums.sh dist/SHA256SUMS
+
       # releaser-pleaser already created the release with its notes; this
       # only attaches the packages.
       - uses: softprops/action-gh-release@v3
@@ -336,19 +343,28 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           name: macos
           path: dist
 
-      # The .dmg and its line in SHA256SUMS, added to the published release.
+      # The .dmg and its line in SHA256SUMS (signed again), added to the
+      # published release.
       - name: Upload
-        working-directory: dist
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
+          cd dist
           gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p SHA256SUMS
+          # A re-run must not list the .dmg twice (the updater drops duplicates).
+          grep -v -- '-macos-universal.dmg$' SHA256SUMS > SHA256SUMS.tmp || true
+          mv SHA256SUMS.tmp SHA256SUMS
           sha256sum herakleo-*.dmg >> SHA256SUMS
           cat SHA256SUMS
-          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber herakleo-*.dmg SHA256SUMS
+          ../scripts/sign-sums.sh SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber herakleo-*.dmg SHA256SUMS SHA256SUMS.sig
 
   aur:
     name: AUR

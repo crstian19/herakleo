@@ -15,6 +15,7 @@
     type Programme,
     type Reminder,
     type SettingsPatch,
+    type UpdateInfo,
     type SourceInfo,
   } from "./lib/api";
   import ChannelCard from "./lib/ChannelCard.svelte";
@@ -31,6 +32,8 @@
   import SourceDialog from "./lib/SourceDialog.svelte";
   import GuideDialog from "./lib/GuideDialog.svelte";
   import SeriesDialog from "./lib/SeriesDialog.svelte";
+  import UpdateDialog from "./lib/UpdateDialog.svelte";
+  import { skippedVersion } from "./lib/update";
 
   const PAGE = 120; // cards fetched per load in scroll mode
   const PAGE_SIZE = 60; // cards per page in pagination mode (the default)
@@ -355,6 +358,26 @@
     }
   }
 
+  // A newer release, shown in UpdateDialog. The automatic check on start
+  // stays quiet unless there is one the user has not skipped; the button in
+  // Settings → About always answers.
+  let updateInfo = $state<UpdateInfo | null>(null);
+  let updateChecking = $state(false);
+
+  async function checkUpdate(manual: boolean) {
+    if (updateChecking) return;
+    updateChecking = true;
+    try {
+      const info = await api.checkUpdate();
+      if (info.available && (manual || info.latest !== skippedVersion())) updateInfo = info;
+      else if (manual) notify(t("toast.upToDate", { version: info.current }));
+    } catch (err) {
+      if (manual) notify(errorMessage(err), true);
+    } finally {
+      updateChecking = false;
+    }
+  }
+
   async function changeSettings(patch: SettingsPatch, message: () => string) {
     try {
       appSettings = await api.updateSettings(patch);
@@ -412,6 +435,8 @@
       const bench = await api.benchMode();
       if (bench === "full") return benchUnattended();
       if (bench.startsWith("wheel")) return wheelSession(bench.split(":")[1] ?? "baseline");
+      // After the window has settled, never in the way of loading it.
+      if (appSettings?.updates === "on") setTimeout(() => checkUpdate(false), 4000);
       if (appSettings?.refreshOnStart) await refreshAll();
       reminders = await api.listReminders().catch(() => []);
       checkReminders();
@@ -1142,6 +1167,8 @@
           onexport={exportFavorites}
           onimport={importFavorites}
           onperf={measureScroll}
+          {updateChecking}
+          oncheckupdate={() => checkUpdate(true)}
         />
       {:else if sources.length === 0}
         <div class="grid h-full place-items-center">
@@ -1213,6 +1240,10 @@
 
 {#if supportOpen}
   <SupportDialog onclose={closeSupport} />
+{/if}
+
+{#if updateInfo}
+  <UpdateDialog info={updateInfo} onclose={() => (updateInfo = null)} />
 {/if}
 
 {#if helpOpen}

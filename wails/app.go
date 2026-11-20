@@ -28,11 +28,13 @@ type App struct {
 	player player.Player
 	// telemetryURL is where pings go; telemetry.Endpoint unless a test sets it.
 	telemetryURL string
+	updates      updates
 }
 
 // ServiceStartup sends the daily ping (unless turned off) a few seconds after
 // start, so it never competes with loading the window.
 func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error { //nolint:unparam // Wails' service interface
+	go a.cleanupUpdate()
 	go func() {
 		time.Sleep(5 * time.Second)
 		a.ping(false)
@@ -93,6 +95,13 @@ func telemetryView(s library.Settings) string {
 		return library.TelemetryOn
 	}
 	return library.TelemetryOff
+}
+
+func updatesView(s library.Settings) string {
+	if s.UpdatesEnabled() {
+		return library.UpdatesOn
+	}
+	return library.UpdatesOff
 }
 
 func doNotTrack() bool {
@@ -228,6 +237,8 @@ type SettingsView struct {
 	Version          string        `json:"version"`
 	// Telemetry is "on" or "off"; "dnt" when DO_NOT_TRACK turns it off.
 	Telemetry string `json:"telemetry"`
+	// Updates is "on" or "off": whether the UI checks for a new version on start.
+	Updates string `json:"updates"`
 	// Where library.json lives, with the home folder shown as ~ outside Windows.
 	DataDir string `json:"dataDir"`
 }
@@ -238,7 +249,7 @@ func (a *App) GetSettings() SettingsView {
 		Player: a.playerID(), Players: player.Available(), RefreshOnStart: s.RefreshOnStart,
 		SoftwareDecoding: s.SoftwareDecoding, CacheSecs: s.CacheSecs, Volume: s.Volume,
 		CacheChoices: player.CacheChoices, DataDir: displayDir(a.lib.Dir()),
-		Version: Version, Telemetry: telemetryView(s),
+		Version: Version, Telemetry: telemetryView(s), Updates: updatesView(s),
 	}
 }
 
@@ -250,6 +261,9 @@ func (a *App) UpdateSettings(patch library.SettingsPatch) (SettingsView, error) 
 	}
 	if t := patch.Telemetry; t != nil && *t != library.TelemetryOn && *t != library.TelemetryOff {
 		return SettingsView{}, fmt.Errorf("invalid_option: telemetry %q", *t)
+	}
+	if u := patch.Updates; u != nil && *u != library.UpdatesOn && *u != library.UpdatesOff {
+		return SettingsView{}, fmt.Errorf("invalid_option: updates %q", *u)
 	}
 	next := playerOptions(a.lib.Settings())
 	if patch.CacheSecs != nil {
@@ -422,6 +436,8 @@ var projectLinks = map[string]string{
 	"sponsors": "https://github.com/sponsors/crstian19",
 	"kofi":     "https://ko-fi.com/crstian",
 	"paypal":   "https://paypal.me/CrstianG",
+	// The newest release, for installs the app cannot update itself.
+	"release": "https://github.com/crstian19/herakleo/releases/latest",
 	// What the usage statistics send.
 	"telemetry": "https://github.com/crstian19/herakleo#telemetry",
 }

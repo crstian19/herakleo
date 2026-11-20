@@ -51,5 +51,7 @@ export const backend: Backend = {
   benchMode: () => app().BenchMode(),
   diagnostics: () => app().Diagnostics(),
   openLink: (id) => app().OpenLink(id),
+  checkUpdate: () => app().CheckUpdate(),
+  installUpdate: () => app().InstallUpdate(),
   benchReport: (report) => app().BenchReport(report),
 };
