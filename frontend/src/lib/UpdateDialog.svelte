@@ -17,8 +17,17 @@
   $effect(() => panel.focus());
 
   const notes = $derived(releaseNotes(info.notes));
-  // aur, scoop, brew (command); flatpak, deb, rpm (download); "" for the rest.
-  const managerHint = $derived(info.manager ? t(`update.via.${info.manager}` as MessageKey) : t("update.downloadHint"));
+  // aur, scoop, brew (command); flatpak, deb, rpm (download). Anything else
+  // (or "") falls back to the generic hint instead of a missing key.
+  const managerKeys: Record<string, MessageKey> = {
+    aur: "update.via.aur",
+    scoop: "update.via.scoop",
+    brew: "update.via.brew",
+    flatpak: "update.via.flatpak",
+    deb: "update.via.deb",
+    rpm: "update.via.rpm",
+  };
+  const managerHint = $derived(t(managerKeys[info.manager] ?? "update.downloadHint"));
 
   async function install() {
     busy = true;

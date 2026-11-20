@@ -248,7 +248,7 @@ export const backend: Backend = {
       notes: "## Features\n\n- **update**: the app updates itself ([abc1234](https://example.com))\n\n**Full changes**: https://example.com",
       mode: mode === "none" ? "install" : (mode as "install" | "command" | "download"),
       manager: mode === "command" ? "aur" : "",
-      command: mode === "command" ? "yay -Syu" : "",
+      command: mode === "command" ? "yay -S herakleo-bin" : "",
     });
   },
   installUpdate: () => new Promise((_, reject) => setTimeout(() => reject("demo_unavailable"), 1500)),

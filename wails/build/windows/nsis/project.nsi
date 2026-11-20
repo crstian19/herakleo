@@ -73,7 +73,7 @@ Section
 
     # /relaunch: run by the in-app updater (internal/update/start_windows.go)
     # while the old app is still closing. Wait up to 30 s until herakleo.exe
-    # can be overwritten, then start the app again at the end.
+    # can be overwritten (or give up untouched), then start the app again.
     ${If} $Relaunch == 1
         StrCpy $R2 0
         ${Do}
@@ -88,7 +88,9 @@ Section
             ${EndIf}
             IntOp $R2 $R2 + 1
             ${If} $R2 >= 60
-                ${Break}
+                # Still locked: overwriting it would leave a half-replaced
+                # install. Stop; the old version stays as it was.
+                Abort
             ${EndIf}
             Sleep 500
         ${Loop}

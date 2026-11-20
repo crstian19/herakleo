@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -237,6 +238,61 @@ func TestApplyRetriesSignatureOnce(t *testing.T) {
 			}
 			if got := sigHits.Load(); got != 2 {
 				t.Fatalf("signature fetched %d times, want 2", got)
+			}
+		})
+	}
+}
+
+// A signature not uploaded yet (404) is retried like a stale one.
+func TestApplyRetriesMissingSignature(t *testing.T) {
+	pub, priv := newKey(t)
+	const v = "0.5.0"
+	name := "herakleo-0.5.0-linux-x86_64.tar.gz"
+	asset := makeTar(t, tarEntry{"herakleo-0.5.0-linux-x86_64/herakleo", "new", tar.TypeReg})
+	h := sha256.Sum256(asset)
+	sums := []byte(hex.EncodeToString(h[:]) + "  " + name + "\n")
+	var sigHits atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v0.5.0/"+SumsName, func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(sums) })
+	mux.HandleFunc("/v0.5.0/"+SigName, func(w http.ResponseWriter, _ *http.Request) {
+		if sigHits.Add(1) == 1 {
+			http.NotFound(w, nil)
+			return
+		}
+		_, _ = w.Write(ed25519.Sign(priv, sums))
+	})
+	mux.HandleFunc("/v0.5.0/"+name, func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(asset) })
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	u := &Updater{
+		Client: http.DefaultClient, Base: srv.URL + "/", Key: pub,
+		Target: Install{Mode: ModeInstall, Method: MethodTarball, Target: installedExe(t, "herakleo")},
+	}
+	if _, err := u.Apply(context.Background(), Release{Version: v}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A member that is not exactly its declared size is never swapped in.
+func TestCopyExact(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		size int64
+		ok   bool
+	}{
+		{"exact", "abcd", 4, true},
+		{"short", "ab", 4, false},
+		{"longer than declared", "abcdef", 4, false},
+		{"over the cap", "", maxBin + 1, false},
+		{"negative", "", -1, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out bytes.Buffer
+			err := copyExact(&out, strings.NewReader(tt.body), tt.size, "x")
+			if (err == nil) != tt.ok {
+				t.Fatalf("err = %v", err)
 			}
 		})
 	}

@@ -86,7 +86,7 @@ it off in Settings → About). When there is a newer one, what happens depends o
 | Installed from | Update |
 |---|---|
 | `.tar.gz` (Linux), `setup.exe` or `.zip` (Windows), `.dmg` (macOS) | *Update and restart*: the app downloads the new package, checks it and restarts |
-| AUR, Scoop, Homebrew | The app shows the command (`yay -Syu`, `scoop update herakleo`, `brew upgrade --cask herakleo`) |
+| AUR, Scoop, Homebrew | The app shows the command (`yay -S herakleo` or `herakleo-bin`, `scoop update herakleo`, `brew upgrade --cask herakleo`) |
 | `.deb`, `.rpm`, `.flatpak` | The app opens the release page; install the new package like the first one |
 
 The app only installs files listed in the release's `SHA256SUMS` with a valid `SHA256SUMS.sig`,

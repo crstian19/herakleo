@@ -114,10 +114,12 @@ func detectLinux(e Env, download func(string) Install) Install {
 		return download("") // copied there by hand
 	}
 	if strings.HasPrefix(e.Exe, "/usr/") {
+		// Only this package, not a whole system upgrade.
 		switch {
-		case len(e.Glob("/var/lib/pacman/local/herakleo-bin-*")) > 0,
-			len(e.Glob("/var/lib/pacman/local/herakleo-[0-9]*")) > 0:
-			return Install{Mode: ModeCommand, Manager: "aur", Command: "yay -Syu"}
+		case len(e.Glob("/var/lib/pacman/local/herakleo-bin-*")) > 0:
+			return Install{Mode: ModeCommand, Manager: "aur", Command: "yay -S herakleo-bin"}
+		case len(e.Glob("/var/lib/pacman/local/herakleo-[0-9]*")) > 0:
+			return Install{Mode: ModeCommand, Manager: "aur", Command: "yay -S herakleo"}
 		case e.Exists("/var/lib/dpkg/info/herakleo.list"):
 			return download("deb")
 		case e.Exists("/usr/lib/sysimage/rpm") || e.Exists("/var/lib/rpm"):
@@ -138,7 +140,11 @@ func detectWindows(e Env, download func(string) Install) Install {
 		return Install{Mode: ModeCommand, Manager: "scoop", Command: "scoop update herakleo"}
 	}
 	// Windows paths are split by hand, so tests on other systems see them too.
-	dir := e.Exe[:max(strings.LastIndexAny(e.Exe, `\/`), 0)]
+	sep := strings.LastIndexAny(e.Exe, `\/`)
+	if sep <= 0 {
+		return download("")
+	}
+	dir := e.Exe[:sep]
 	if e.GOARCH != "amd64" || !e.Writable(dir) {
 		return download("")
 	}

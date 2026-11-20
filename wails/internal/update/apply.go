@@ -106,16 +106,8 @@ var retryDelay = 5 * time.Second
 // and its .sig one after the other, so a mismatch is tried once more.
 func (u *Updater) signedSums(ctx context.Context, base string) (map[string]string, error) {
 	for try := 0; ; try++ {
-		sums, err := u.fetchBytes(ctx, base+SumsName, maxSums)
-		if err != nil {
-			return nil, fmt.Errorf("update_download_failed: %w", err)
-		}
-		sig, err := u.fetchBytes(ctx, base+SigName, 1024)
-		if err != nil {
-			return nil, fmt.Errorf("update_download_failed: %w", err)
-		}
-		entries, err := VerifySums(sums, sig, u.Key)
-		if err == nil || try == 1 {
+		entries, err := u.fetchSums(ctx, base)
+		if err == nil || try == 1 || ctx.Err() != nil {
 			return entries, err
 		}
 		select {
@@ -124,6 +116,19 @@ func (u *Updater) signedSums(ctx context.Context, base string) (map[string]strin
 		case <-time.After(retryDelay):
 		}
 	}
+}
+
+func (u *Updater) fetchSums(ctx context.Context, base string) (map[string]string, error) {
+	sums, err := u.fetchBytes(ctx, base+SumsName, maxSums)
+	if err != nil {
+		return nil, fmt.Errorf("update_download_failed: %w", err)
+	}
+	// Missing for a moment while the workflow re-uploads it: retried too.
+	sig, err := u.fetchBytes(ctx, base+SigName, 1024)
+	if err != nil {
+		return nil, fmt.Errorf("update_download_failed: %w", err)
+	}
+	return VerifySums(sums, sig, u.Key)
 }
 
 func (u *Updater) get(ctx context.Context, url string) (*http.Response, error) {
@@ -261,8 +266,7 @@ func extractTar(archive, inner string, w io.Writer) error {
 			return err
 		}
 		if path.Clean(h.Name) == inner && h.Typeflag == tar.TypeReg {
-			_, err := io.Copy(w, io.LimitReader(tr, maxBin))
-			return err
+			return copyExact(w, tr, h.Size, inner)
 		}
 	}
 }
@@ -282,10 +286,28 @@ func extractZip(archive, inner string, w io.Writer) error {
 			return err
 		}
 		defer func() { _ = r.Close() }()
-		_, err = io.Copy(w, io.LimitReader(r, maxBin))
-		return err
+		if zf.UncompressedSize64 > maxBin {
+			return fmt.Errorf("%s: too large", inner)
+		}
+		return copyExact(w, r, int64(zf.UncompressedSize64), inner) //nolint:gosec // checked above
 	}
 	return fmt.Errorf("%s not in the archive", inner)
+}
+
+// copyExact copies the archive member, failing unless it is exactly the
+// declared size and within maxBin: a cut-off binary must never be swapped in.
+func copyExact(w io.Writer, r io.Reader, size int64, name string) error {
+	if size < 0 || size > maxBin {
+		return fmt.Errorf("%s: bad size %d", name, size)
+	}
+	n, err := io.Copy(w, io.LimitReader(r, size+1))
+	if err != nil {
+		return err
+	}
+	if n != size {
+		return fmt.Errorf("%s: %d bytes, want %d", name, n, size)
+	}
+	return nil
 }
 
 // applyDMG copies Herakleo.app out of the mounted image next to the current
@@ -293,6 +315,9 @@ func extractZip(archive, inner string, w io.Writer) error {
 // flag, so Gatekeeper does not ask again.
 func applyDMG(ctx context.Context, dmg, tmp, app string) (Restart, error) {
 	mnt := filepath.Join(tmp, "mnt")
+	if err := os.Mkdir(mnt, 0o700); err != nil {
+		return nil, err
+	}
 	if err := exec.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen",
 		"-mountpoint", mnt, dmg).Run(); err != nil {
 		return nil, fmt.Errorf("hdiutil attach: %w", err)
