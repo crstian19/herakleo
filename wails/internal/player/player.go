@@ -72,7 +72,9 @@ var known = []struct {
 }{
 	{"mpv", "mpv", "mpv", nil, []string{OptSoftwareDecoding, OptCacheSecs, OptVolume}, func(l launch, o Options) []string {
 		args := []string{
-			"--force-window=immediate", "--really-quiet",
+			// Errors only: when a stream is refused, the reason ("HTTP
+			// error 403") reaches the UI (exit.go) instead of nothing.
+			"--force-window=immediate", "--really-quiet", "--msg-level=all=error",
 			// "$$" stops mpv expanding ${path} in a hostile channel name into
 			// the window title, which would show the password-bearing URL.
 			"--title=" + strings.ReplaceAll(l.title, "$", "$$"),
@@ -196,6 +198,17 @@ type Player struct {
 	cmd *exec.Cmd
 	// Playlist file of the running player.
 	list string
+	// onExit hears about players that closed on their own with an error
+	// (see Exit); set with SetOnExit.
+	onExit func(Exit)
+}
+
+// SetOnExit sets the callback for players that close on their own with an
+// error. It runs on the goroutine that waits for the player.
+func (m *Player) SetOnExit(f func(Exit)) {
+	m.mu.Lock()
+	m.onExit = f
+	m.mu.Unlock()
 }
 
 // Play opens the stream in the chosen player, closing whatever was playing before.
@@ -238,18 +251,53 @@ func (m *Player) Play(playerID, title, streamURL string, o Options) error {
 	m.stopLocked()
 
 	cmd := playerCommand(bin, p.args(l, o))
+	out := &tailBuffer{}
+	cmd.Stdout, cmd.Stderr = out, out
+	// A child the player leaves behind may hold the output pipe open: don't
+	// let that keep Wait (and the playlist removal) waiting.
+	cmd.WaitDelay = 2 * time.Second
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(list)
 		return err
 	}
 	m.cmd, m.list = cmd, list
+	started := time.Now()
 	// Reap the process whenever it exits, whether the user closed it or we
 	// did, and drop its playlist: the file holds the password.
 	go func() {
 		_ = cmd.Wait()
 		_ = os.Remove(list)
+		m.exited(cmd, p.id, p.name, strings.TrimPrefix(strings.TrimPrefix(title, "Herakleo"), " · "), streamURL, started, out)
 	}()
 	return nil
+}
+
+// exited reports a player that closed on its own with an error. One we
+// stopped or replaced (m.cmd moved on) is not reported.
+func (m *Player) exited(cmd *exec.Cmd, id, name, title, streamURL string, started time.Time, out *tailBuffer) {
+	m.mu.Lock()
+	ours := m.cmd == cmd
+	if ours {
+		m.cmd, m.list = nil, ""
+	}
+	notify := m.onExit
+	m.mu.Unlock()
+	if !ours || notify == nil {
+		return
+	}
+	code := -1
+	if cmd.ProcessState != nil {
+		code = cmd.ProcessState.ExitCode()
+	}
+	ran := time.Since(started)
+	lines := scrubLog(out.String(), streamURL)
+	if !failed(id, code, lines) {
+		return
+	}
+	notify(Exit{
+		Player: name, Title: title, Code: code, Seconds: int(ran.Seconds()),
+		Log: lines, At: time.Now().Unix(),
+	})
 }
 
 // Stop closes the player if it is running.

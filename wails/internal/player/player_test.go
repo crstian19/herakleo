@@ -19,7 +19,7 @@ func testLaunch() launch {
 func TestArgsPerPlayer(t *testing.T) {
 	mpv := known[0].args(testLaunch(), Options{})
 	want := []string{
-		"--force-window=immediate", "--really-quiet", "--title=Herakleo · a$$b", "--ytdl=no",
+		"--force-window=immediate", "--really-quiet", "--msg-level=all=error", "--title=Herakleo · a$$b", "--ytdl=no",
 		"--hwdec=auto-safe", "--playlist=/run/user/1000/herakleo/play-1.m3u",
 	}
 	if !slices.Equal(mpv, want) {
@@ -37,7 +37,7 @@ func TestOptionsPerPlayer(t *testing.T) {
 	o := Options{SoftwareDecoding: true, CacheSecs: 30, Volume: 70}
 	mpv := known[0].args(testLaunch(), o)
 	want := []string{"--hwdec=no", "--cache=yes", "--cache-secs=30", "--volume=70", "--playlist=/run/user/1000/herakleo/play-1.m3u"}
-	if !slices.Equal(mpv[4:], want) {
+	if !slices.Equal(mpv[5:], want) {
 		t.Fatalf("mpv args %q", mpv)
 	}
 	vlc := known[1].args(testLaunch(), o)

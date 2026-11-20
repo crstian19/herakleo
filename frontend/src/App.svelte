@@ -14,6 +14,7 @@
     type NowNext,
     type Programme,
     type Reminder,
+    type PlayerExit,
     type SettingsPatch,
     type UpdateInfo,
     type SourceInfo,
@@ -33,6 +34,7 @@
   import GuideDialog from "./lib/GuideDialog.svelte";
   import SeriesDialog from "./lib/SeriesDialog.svelte";
   import UpdateDialog from "./lib/UpdateDialog.svelte";
+  import { exitText } from "./lib/playerexit";
   import { skippedVersion } from "./lib/update";
 
   const PAGE = 120; // cards fetched per load in scroll mode
@@ -53,6 +55,30 @@
   let reminders = $state<Reminder[]>([]);
   const announced = new Set<string>();
   let alertFor = $state<Reminder | null>(null);
+  // A player that closed on its own with an error: what it printed, until
+  // the user closes it, with a Copy button.
+  let exitAlert = $state<PlayerExit | null>(null);
+  let exitCopied = $state(false);
+  let exitPre = $state<HTMLElement>();
+
+  function playerExited(e: PlayerExit) {
+    exitAlert = e;
+    exitCopied = false;
+  }
+
+  async function copyExit(e: PlayerExit) {
+    try {
+      await navigator.clipboard.writeText(exitText(e));
+      exitCopied = true;
+    } catch {
+      // Some webviews block the async clipboard: select the text so Ctrl+C works.
+      if (!exitPre) return;
+      const range = document.createRange();
+      range.selectNodeContents(exitPre);
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+    }
+  }
   const anyGuide = $derived(sources.some((s) => s.enabled && s.guideUpdatedAt > 0));
   let groups = $state<Group[]>([]);
   let hiddenGroups = $state<string[]>([]);
@@ -442,6 +468,7 @@
       checkReminders();
       refreshStaleGuides();
     })();
+    const stopExits = api.onPlayerExit(playerExited);
     const ticker = setInterval(() => {
       clock = Math.floor(Date.now() / 1000);
       requestGuide(visible);
@@ -456,6 +483,7 @@
     const ro = new ResizeObserver(scheduleWindow);
     if (scroller) ro.observe(scroller);
     return () => {
+      stopExits();
       clearInterval(ticker);
       io.disconnect();
       ro.disconnect();
@@ -1240,6 +1268,29 @@
 
 {#if supportOpen}
   <SupportDialog onclose={closeSupport} />
+{/if}
+
+{#if exitAlert}
+  {@const e = exitAlert}
+  <div
+    class="fixed right-6 z-50 w-[28rem] max-w-[calc(100%-3rem)] rounded-2xl border border-red-500/40 bg-[#1a0f12] p-4 shadow-2xl
+      {alertFor ? 'bottom-44' : 'bottom-6'}"
+    role="alert"
+  >
+    <p class="text-xs font-semibold tracking-wider text-red-300 uppercase">{t("playerExit.closed", { player: e.player })}</p>
+    <p class="mt-1 font-medium">{e.title}</p>
+    {#if e.log?.length}
+      <pre
+        bind:this={exitPre}
+        class="mt-2 max-h-48 overflow-auto rounded-lg border border-line bg-black/40 p-3 text-xs leading-relaxed whitespace-pre-wrap select-text">{e.log.join("\n")}</pre>
+    {:else}
+      <p bind:this={exitPre} class="mt-1 text-sm text-red-200">{t("playerExit.noOutput", { code: e.code })}</p>
+    {/if}
+    <div class="mt-3 flex justify-end gap-2">
+      <button class="btn-ghost px-3 py-1.5 text-sm" onclick={() => (exitAlert = null)}>{t("reminder.dismiss")}</button>
+      <button class="btn-accent px-3 py-1.5 text-sm" onclick={() => copyExit(e)}>{exitCopied ? t("diag.copied") : t("playerExit.copy")}</button>
+    </div>
+  </div>
 {/if}
 
 {#if updateInfo}
