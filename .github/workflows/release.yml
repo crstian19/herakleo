@@ -358,6 +358,9 @@ jobs:
         run: |
           cd dist
           gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p SHA256SUMS
+          # A re-run must not list the .dmg twice (the updater drops duplicates).
+          grep -v -- '-macos-universal.dmg$' SHA256SUMS > SHA256SUMS.tmp || true
+          mv SHA256SUMS.tmp SHA256SUMS
           sha256sum herakleo-*.dmg >> SHA256SUMS
           cat SHA256SUMS
           ../scripts/sign-sums.sh SHA256SUMS

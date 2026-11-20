@@ -142,6 +142,23 @@ export interface AppSettings extends PlaybackOptions {
   version: string;
   /** Anonymous usage statistics: on by default; "dnt" when DO_NOT_TRACK turns them off. */
   telemetry: "on" | "off" | "dnt";
+  /** Whether the app checks GitHub for a new version on start. */
+  updates: "on" | "off";
+}
+
+/** The newest release and what this install can do about it. */
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  /** Newer than the running version (and, for "install", its package is out). */
+  available: boolean;
+  /** Release text, Markdown: show it as plain text only. */
+  notes: string;
+  /** install: the app updates itself; command: run `command`; download: open the release page. */
+  mode: "install" | "command" | "download";
+  /** Who owns the install: aur, scoop, brew, flatpak, deb, rpm, or "". */
+  manager: string;
+  command: string;
 }
 
 export interface SettingsPatch extends Partial<PlaybackOptions> {
@@ -149,6 +166,7 @@ export interface SettingsPatch extends Partial<PlaybackOptions> {
   player?: string;
   refreshOnStart?: boolean;
   telemetry?: "on" | "off";
+  updates?: "on" | "off";
 }
 
 export interface Backend {
@@ -199,7 +217,11 @@ export interface Backend {
   /** File picker for .m3u files; null when cancelled. */
   pickPlaylistFile(title: string): Promise<string | null>;
   /** Opens a project link (repo or donation page) in the system browser; IDs only, never URLs. */
-  openLink(id: "github" | "sponsors" | "kofi" | "paypal" | "telemetry"): Promise<void>;
+  openLink(id: "github" | "sponsors" | "kofi" | "paypal" | "telemetry" | "release"): Promise<void>;
+  /** Asks GitHub for the newest release. */
+  checkUpdate(): Promise<UpdateInfo>;
+  /** Installs the release the last checkUpdate found ("install" mode only), then the app restarts. */
+  installUpdate(): Promise<void>;
   /** Machine/renderer facts for the in-app performance report (no secrets). */
   diagnostics(): Promise<Record<string, string>>;
   /** "" normally; "full" or "wheel[:variant]" when started by just bench / scripts/profile-scroll.sh. */

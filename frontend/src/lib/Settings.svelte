@@ -28,6 +28,8 @@
     onexport,
     onimport,
     onperf,
+    updateChecking,
+    oncheckupdate,
   }: {
     sources: SourceInfo[];
     settings: AppSettings | null;
@@ -50,6 +52,9 @@
     onimport: () => void;
     /** Starts the wheel-scroll measurement (App.svelte runs it on the channel grid). */
     onperf: () => void;
+    /** A manual update check is running. */
+    updateChecking: boolean;
+    oncheckupdate: () => void;
   } = $props();
 
   const kindKey: Record<SourceInfo["kind"], MessageKey> = {
@@ -443,5 +448,24 @@
       <dt class="text-muted">{t("settings.playerRow")}</dt>
       <dd>{t("settings.playerExternal", { player: settings?.players.find((p) => p.id === settings?.player)?.name ?? "—" })}</dd>
     </dl>
+    <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 px-1">
+      <button class="btn-ghost" disabled={updateChecking} onclick={oncheckupdate}
+        >{updateChecking ? t("settings.checkingUpdate") : t("settings.checkUpdate")}</button
+      >
+      <label class="flex cursor-pointer items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          class="size-4 accent-accent"
+          checked={settings?.updates === "on"}
+          disabled={!settings}
+          onchange={(e) => {
+            const on = e.currentTarget.checked;
+            onsettings({ updates: on ? "on" : "off" }, () => t(on ? "toast.updatesOn" : "toast.updatesOff"));
+          }}
+        />
+        {t("settings.updates")}
+      </label>
+    </div>
+    <p class="mt-2 px-1 text-xs text-muted">{t("settings.updatesHint")}</p>
   </section>
 </div>

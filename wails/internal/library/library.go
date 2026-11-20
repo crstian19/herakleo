@@ -120,6 +120,9 @@ type Settings struct {
 	InstallID string `json:"installId,omitempty"`
 	// LastPing is unix seconds of the last ping sent.
 	LastPing int64 `json:"lastPing,omitempty"`
+	// Updates is UpdatesOff when the user turned off the check for new
+	// versions; anything else (the default, "") means on.
+	Updates string `json:"updates,omitempty"`
 }
 
 // Telemetry settings.
@@ -127,6 +130,15 @@ const (
 	TelemetryOn  = "on"
 	TelemetryOff = "off"
 )
+
+// Update check settings.
+const (
+	UpdatesOn  = "on"
+	UpdatesOff = "off"
+)
+
+// UpdatesEnabled reports whether the app looks for new versions on start.
+func (s Settings) UpdatesEnabled() bool { return s.Updates != UpdatesOff }
 
 // TelemetryEnabled reports whether statistics are on: they are unless turned off in Settings.
 func (s Settings) TelemetryEnabled() bool { return s.Telemetry != TelemetryOff }
@@ -497,6 +509,8 @@ type SettingsPatch struct {
 	Volume           *int    `json:"volume,omitempty"`
 	// Telemetry is TelemetryOn or TelemetryOff; the caller validates it.
 	Telemetry *string `json:"telemetry,omitempty"`
+	// Updates is UpdatesOn or UpdatesOff; the caller validates it.
+	Updates *string `json:"updates,omitempty"`
 }
 
 // UpdateSettings applies a patch; the caller validates the player ID and options.
@@ -525,6 +539,9 @@ func (l *Library) UpdateSettings(p SettingsPatch) (Settings, error) {
 			// Saying no forgets the ID: saying yes later starts a new one.
 			l.settings.InstallID, l.settings.LastPing = "", 0
 		}
+	}
+	if p.Updates != nil {
+		l.settings.Updates = *p.Updates
 	}
 	return l.settings, l.saveState()
 }

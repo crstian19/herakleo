@@ -7,6 +7,10 @@ Unicode true
 !define WAILS_INSTALL_SCOPE "user"
 !define REQUEST_EXECUTION_LEVEL "user"
 !include "wails_tools.nsh"
+!include "LogicLib.nsh"
+
+# Set by /relaunch (see Section).
+Var Relaunch
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
@@ -55,10 +59,40 @@ ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
    !insertmacro wails.checkArchitecture
+   StrCpy $Relaunch 0
+   ${GetParameters} $R0
+   ClearErrors
+   ${GetOptions} $R0 "/relaunch" $R1
+   ${IfNot} ${Errors}
+       StrCpy $Relaunch 1
+   ${EndIf}
 FunctionEnd
 
 Section
     !insertmacro wails.setShellContext
+
+    # /relaunch: run by the in-app updater (internal/update/start_windows.go)
+    # while the old app is still closing. Wait up to 30 s until herakleo.exe
+    # can be overwritten, then start the app again at the end.
+    ${If} $Relaunch == 1
+        StrCpy $R2 0
+        ${Do}
+            ClearErrors
+            ${IfNot} ${FileExists} "$INSTDIR\${PRODUCT_EXECUTABLE}"
+                ${Break}
+            ${EndIf}
+            FileOpen $R3 "$INSTDIR\${PRODUCT_EXECUTABLE}" a
+            ${IfNot} ${Errors}
+                FileClose $R3
+                ${Break}
+            ${EndIf}
+            IntOp $R2 $R2 + 1
+            ${If} $R2 >= 60
+                ${Break}
+            ${EndIf}
+            Sleep 500
+        ${Loop}
+    ${EndIf}
 
     !insertmacro wails.webview2runtime
 
@@ -76,6 +110,10 @@ Section
     !insertmacro wails.associateCustomProtocols
     
     !insertmacro wails.writeUninstaller
+
+    ${If} $Relaunch == 1
+        Exec '"$INSTDIR\${PRODUCT_EXECUTABLE}"'
+    ${EndIf}
 SectionEnd
 
 Section "uninstall" 

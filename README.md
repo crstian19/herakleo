@@ -78,6 +78,21 @@ Players are found on `PATH` and in their usual install folders (`Program Files` 
 Herakleo to Applications, then either right-click it → *Open*, or run
 `xattr -dr com.apple.quarantine /Applications/Herakleo.app` once.
 
+### Updates
+
+On start, Herakleo asks GitHub for the latest release (one request, nothing of yours is sent; turn
+it off in Settings → About). When there is a newer one, what happens depends on how you installed it:
+
+| Installed from | Update |
+|---|---|
+| `.tar.gz` (Linux), `setup.exe` or `.zip` (Windows), `.dmg` (macOS) | *Update and restart*: the app downloads the new package, checks it and restarts |
+| AUR, Scoop, Homebrew | The app shows the command (`yay -Syu`, `scoop update herakleo`, `brew upgrade --cask herakleo`) |
+| `.deb`, `.rpm`, `.flatpak` | The app opens the release page; install the new package like the first one |
+
+The app only installs files listed in the release's `SHA256SUMS` with a valid `SHA256SUMS.sig`,
+an ed25519 signature made by the release workflow; the public key is built into the app. A file
+that fails the check is not installed.
+
 ## Build from source
 
 Requirements on Linux: [Go](https://go.dev) 1.27+, [Bun](https://bun.sh),
@@ -121,7 +136,8 @@ are `chore(deps)` and do not.
 
 Merging the release PR tags `vX.Y.Z` and creates the GitHub release with the changelog. The tag
 starts [`release.yml`](.github/workflows/release.yml): it builds every package above and attaches
-them with a `SHA256SUMS`. The workflow authenticates as the `crstian19-releaser` GitHub App
+them with a `SHA256SUMS` and its signature `SHA256SUMS.sig` (secret `UPDATE_SIGNING_KEY`, see
+[Updates](#updates)). The workflow authenticates as the `crstian19-releaser` GitHub App
 (secrets `RELEASER_APP_CLIENT_ID` and `RELEASER_APP_PRIVATE_KEY`), because a tag pushed with
 `GITHUB_TOKEN` would not start it.
 Running the workflow by hand builds the same packages as artifacts without publishing. Windows and
