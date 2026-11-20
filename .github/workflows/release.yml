@@ -70,7 +70,7 @@ jobs:
     # webkitgtk-6.0, keeps the packages working on 24.04 LTS, Mint 22 and
     # Debian 13 as well as anything newer. Do not drop the container when the
     # runner image moves on.
-    container: ubuntu:24.04
+    container: ubuntu:26.04
     env:
       VERSION: ${{ needs.version.outputs.version }}
       DEBIAN_FRONTEND: noninteractive
