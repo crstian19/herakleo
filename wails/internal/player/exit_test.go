@@ -15,6 +15,7 @@ func TestRedactLine(t *testing.T) {
 		{"[curl] HTTP error 403", "[curl] HTTP error 403"},
 		{"redirect to HTTPS://cdn.example/x?token=abc and udp://239.0.0.1:1234", "redirect to https://cdn.example/… and udp://239.0.0.1:1234/…"},
 		{"bell\x07 and esc\x1b[31m", "bell and esc[31m"},
+		{"x-herakleo-custom-proxy-scheme://u:p@proxy.example/live/u/pw/1.ts", "x-herakleo-custom-proxy-scheme://proxy.example/…"},
 	}
 	for _, tt := range tests {
 		if got := redactLine(tt.in); got != tt.want {
@@ -33,7 +34,7 @@ func FuzzRedactLineDropsSecrets(f *testing.F) {
 	f.Add("x", "HTTPS", "a@b@", "h", "/PASS", "#frag", " tail")
 	f.Fuzz(func(t *testing.T, pre, scheme, userinfo, host, path, query, post string) {
 		const secret = "Zq9SECRETq9Z"
-		if !strings.Contains(scheme+"://"+host, "://") || strings.ContainsAny(host+userinfo, " \t\n\r\"'<>/?#") ||
+		if strings.ContainsAny(scheme, " \t\n\r\"'<>/?#") || strings.ContainsAny(host+userinfo, " \t\n\r\"'<>/?#") ||
 			strings.ContainsAny(pre, "/") || strings.Contains(pre+post+host+scheme, secret) {
 			t.Skip()
 		}

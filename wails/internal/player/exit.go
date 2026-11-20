@@ -69,7 +69,7 @@ func (t *tailBuffer) String() string {
 	return string(bytes.ToValidUTF8(b, []byte("?")))
 }
 
-var urlRe = regexp.MustCompile(`(?i)([a-z0-9+.-]{0,16})://([^\s/?#"'<>]*)[^\s"'<>]*`)
+var urlRe = regexp.MustCompile(`(?i)([a-z0-9+.-]*)://([^\s/?#"'<>]*)[^\s"'<>]*`)
 
 // redactLine cuts every URL in a log line down to scheme://host: no user
 // info, path or query (Xtream puts the user and password in the path).
