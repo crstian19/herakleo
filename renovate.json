@@ -8,6 +8,19 @@
       "description": "Hold TypeScript below 7: svelte-check only runs TS 7 with TS 6 installed alongside and the experimental --tsgo flag. Lift this once svelte-check supports TS 7 on its own.",
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<7"
+    },
+    {
+      "description": "Keep the release build container on ubuntu:24.04: packages built on a newer base need a newer glibc and stop running on 24.04 LTS, Mint 22 and Debian 13.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ubuntu"
+      ],
+      "matchFileNames": [
+        ".github/workflows/release.yml"
+      ],
+      "enabled": false
     }
   ]
 }
