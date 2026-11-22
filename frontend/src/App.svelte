@@ -184,6 +184,13 @@
     starOpen = false;
     remember(STAR_SEEN);
   }
+  // Mock build only: ?prompt=star or ?prompt=support opens that popup on load,
+  // to look at it without playing 30 channels.
+  if (import.meta.env.MODE === "mock") {
+    const ask = new URLSearchParams(location.search).get("prompt");
+    starOpen = ask === "star";
+    supportOpen = ask === "support";
+  }
   // Settings → Performance: "measuring" while the user scrolls, then the report.
   let perf = $state<"measuring" | { report: string } | null>(null);
   // True while the grid scrolls and for 150 ms after: cards then ignore the
