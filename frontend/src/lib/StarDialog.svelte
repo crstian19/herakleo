@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from "./api";
+  import { celebrate } from "./celebrate";
   import CloseButton from "./CloseButton.svelte";
   import { t } from "./i18n.svelte";
 
@@ -42,11 +43,20 @@
     <h2 id="star-title" class="mb-2 text-xl font-semibold">{t("star.title")}</h2>
     <p class="mb-6 text-sm text-muted">{t("star.desc")}</p>
 
-    <button class="btn-accent flex w-full items-center justify-center gap-2 py-3" onclick={open}>
-      <svg class="size-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
-        ><path d="M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z" /></svg
-      >
-      <span class="font-medium">{t("star.button")}</span>
+    <!-- Same card and confetti as the donate buttons in SupportDialog.svelte. -->
+    <button
+      class="flex w-full items-center justify-center gap-3 rounded-2xl border border-line bg-surface px-3 py-3 transition-colors hover:border-line-hi hover:bg-white/5"
+      onclick={(e) => {
+        celebrate(e.currentTarget);
+        open();
+      }}
+    >
+      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-[#facc15]/15">
+        <svg class="size-5 text-[#facc15]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+          ><path d="M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z" /></svg
+        >
+      </span>
+      <span class="text-sm font-medium">{t("star.button")}</span>
     </button>
 
     <p class="mt-4 min-h-5 text-sm text-accent transition-opacity" class:opacity-0={!opened} role="status">
