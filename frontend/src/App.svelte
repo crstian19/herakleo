@@ -27,6 +27,8 @@
   import { gridMove, isTyping } from "./lib/shortcuts";
   import ShortcutsHelp from "./lib/ShortcutsHelp.svelte";
   import SupportDialog from "./lib/SupportDialog.svelte";
+  import StarDialog from "./lib/StarDialog.svelte";
+  import { promptFor } from "./lib/prompts";
   import MadeWith from "./lib/MadeWith.svelte";
   import DiagnosticsDialog from "./lib/DiagnosticsDialog.svelte";
   import { buildReport } from "./lib/diagnostics";
@@ -143,32 +145,51 @@
   let searchEl = $state<HTMLInputElement>();
   let groupSearchEl = $state<HTMLInputElement>();
   let helpOpen = $state(false);
-  // The "open project, support it" popup: never on first launch. It shows on
-  // the SUPPORT_AFTER-th channel played (the app has proved useful by then),
-  // after that only by chance (SUPPORT_ODDS per play, about once every 200
-  // plays), and from the sidebar any time. Counters are per build (localStorage).
+  // The "help the project" popups (rules in lib/prompts.ts): support never on
+  // first launch, then on the SUPPORT_AFTER-th play and by chance after that;
+  // the GitHub star one once, later. The support one also opens from the
+  // sidebar any time. Counters are per build (localStorage).
   const SUPPORT_SEEN = "herakleo:support-seen";
+  const STAR_SEEN = "herakleo:star-seen";
   const PLAYS = "herakleo:plays";
-  const SUPPORT_AFTER = 10;
-  const SUPPORT_ODDS = 1 / 200;
   let supportOpen = $state(false);
+  let starOpen = $state(false);
   function countPlay() {
     try {
       const plays = Number(localStorage.getItem(PLAYS) ?? 0) + 1;
       localStorage.setItem(PLAYS, String(plays));
-      if (plays < SUPPORT_AFTER) return;
-      if (!localStorage.getItem(SUPPORT_SEEN) || Math.random() < SUPPORT_ODDS) supportOpen = true;
+      const prompt = promptFor({
+        plays,
+        supportSeen: !!localStorage.getItem(SUPPORT_SEEN),
+        starSeen: !!localStorage.getItem(STAR_SEEN),
+      });
+      if (prompt === "support") supportOpen = true;
+      else if (prompt === "star") starOpen = true;
     } catch {
       // No storage: never ask.
     }
   }
-  function closeSupport() {
-    supportOpen = false;
+  function remember(key: string) {
     try {
-      localStorage.setItem(SUPPORT_SEEN, "1");
+      localStorage.setItem(key, "1");
     } catch {
       // Without storage it can show again next launch.
     }
+  }
+  function closeSupport() {
+    supportOpen = false;
+    remember(SUPPORT_SEEN);
+  }
+  function closeStar() {
+    starOpen = false;
+    remember(STAR_SEEN);
+  }
+  // Mock build only: ?prompt=star or ?prompt=support opens that popup on load,
+  // to look at it without playing 30 channels.
+  if (import.meta.env.MODE === "mock") {
+    const ask = new URLSearchParams(location.search).get("prompt");
+    starOpen = ask === "star";
+    supportOpen = ask === "support";
   }
   // Settings → Performance: "measuring" while the user scrolls, then the report.
   let perf = $state<"measuring" | { report: string } | null>(null);
@@ -857,8 +878,8 @@
   }
 
   function onkey(e: KeyboardEvent) {
-    // The list dialog, the support popup and the help own their keys while open.
-    if (dialog || supportOpen || guideFor || seriesFor) return;
+    // The list dialog, the support and star popups and the help own their keys while open.
+    if (dialog || supportOpen || starOpen || guideFor || seriesFor) return;
     if (helpOpen) {
       if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
@@ -1268,6 +1289,8 @@
 
 {#if supportOpen}
   <SupportDialog onclose={closeSupport} />
+{:else if starOpen}
+  <StarDialog onclose={closeStar} />
 {/if}
 
 {#if exitAlert}
