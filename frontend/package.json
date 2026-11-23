@@ -18,7 +18,7 @@
     "lottie-web": "5.13.0"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.2",
     "@tailwindcss/vite": "4.3.5",
     "@types/canvas-confetti": "1.9.0",
     "simple-icons": "16.38.1",
